@@ -1,0 +1,220 @@
+@media (max-width:1280px) and (min-width:861px){
+  body{overflow:auto}
+  .app{height:auto;min-height:100vh;grid-template-rows:76px 620px auto}
+  .center-panel{grid-template-rows:minmax(0,1fr) auto;height:620px;overflow:hidden}
+  .right-panel{min-height:360px}
+}
+
+/* HomeoXNet brand mark, reduced by 20% from the previous interface size. */
+.homeoxnet-logo{display:block;width:auto;height:46.8px;max-width:min(61.6vw,702px);object-fit:contain;}
+
+/* v4 layout safety: lower center is now a single replay-console panel. */
+.bottom-panel.replay-only{display:block;min-height:0;overflow:hidden}
+.bottom-panel.replay-only>.panel{height:100%;min-height:0}
+
+/* v7 layout override: center panel has network / resize handle / replay console rows. The console
+   is content-sized, so the network keeps every pixel the console does not need. */
+.center-panel{
+  grid-template-rows:minmax(280px,var(--network-panel-height,1fr)) 10px auto !important;
+}
+.network-stage{
+  min-width:0 !important;
+  min-height:0 !important;
+}
+@media (max-width:900px){
+  .center-panel{grid-template-rows:minmax(300px,var(--network-panel-height,42vh)) 10px auto !important;}
+}
+
+/* v10 mobile network fit safety */
+@media (max-width:860px){
+  .network-stage{min-width:0!important;min-height:0!important;transition:none!important;}
+  .network-wrap svg{width:100%!important;height:100%!important;overflow:visible;}
+}
+@media (max-width:430px){
+  .network-wrap{min-height:340px!important;}
+  .center-panel{grid-template-rows:minmax(340px,var(--network-panel-height,40vh)) 10px auto!important;}
+}
+
+/* v11: simplify stability panel and make Guide/说明 independently scrollable. */
+.status{min-height:0!important;gap:12px!important;}
+.speed-control-card{display:flex;flex-direction:column;gap:9px;margin-top:2px;padding:10px 11px;border-radius:15px;background:rgba(18,43,72,.7);border:1px solid rgba(255,255,255,.08);}
+.speed-copy{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;}
+.speed-copy b{font-size:13px;white-space:nowrap;}
+.speed-copy span{font-size:12px;color:var(--muted);line-height:1.45;text-align:right;}
+.speed-control-card input{width:100%;}
+.right-panel{grid-template-rows:auto minmax(0,1fr)!important;}
+.right-panel{min-height:0!important;overflow:hidden!important;}
+.detail{min-height:0!important;overflow-y:auto!important;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;scrollbar-gutter:stable;padding-bottom:18px!important;}
+.clinic-box{min-height:0;}
+.diagnosis-list{max-height:clamp(190px,38vh,390px);overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable;padding-right:2px;}
+.detail .rules p:last-child{margin-bottom:0;}
+@media (max-width:1280px) and (min-width:861px){
+  .right-panel{grid-template-columns:300px minmax(0,1fr)!important;grid-template-rows:minmax(0,1fr)!important;}
+  .status{height:100%;}
+  .detail{height:100%;max-height:100%;}
+  .diagnosis-list{max-height:clamp(170px,28vh,300px);}
+}
+@media (max-width:860px){
+  .right-panel{grid-template-columns:1fr!important;grid-template-rows:auto minmax(260px,58vh)!important;}
+  .detail{max-height:58vh;}
+  .diagnosis-list{max-height:clamp(180px,30vh,320px);}
+  .speed-copy{display:block;}
+  .speed-copy span{display:block;text-align:left;margin-top:3px;}
+}
+@media (max-width:430px){
+  .right-panel{grid-template-rows:auto minmax(240px,54vh)!important;}
+  .detail{max-height:54vh;}
+}
+
+/* v19: PC horizontal resize between Intervention Console and the center column. */
+:root{
+  --control-panel-width:324px;
+}
+/* Five columns at the wide breakpoint: console | handle | centre | handle | right column.
+   Both side columns are drag-resizable and each collapses to zero, so the centre keeps whatever
+   they give up. */
+@media (min-width:1281px){
+  .app{
+    /* The right track is `auto` and the column carries its own inline width, rather than the
+       track being driven by a custom property the way the console column is. Driving it by
+       variable did not survive this stylesheet's cascade - the declaration resolved to its
+       fallback no matter what the property held - and an `auto` track following an explicitly
+       sized item is both simpler and verifiable. */
+    grid-template-columns:var(--control-panel-drawer-width,var(--control-panel-width,324px)) 10px minmax(320px,1fr) 10px auto!important;
+    grid-template-rows:minmax(76px,auto) 1fr!important;
+    gap:12px!important;
+  }
+  header{grid-column:1/-1!important;}
+  .left-panel{grid-column:1!important;grid-row:2!important;}
+  .control-panel-resize-handle{display:block;grid-column:2!important;grid-row:2!important;align-self:stretch;}
+  .center-panel{grid-column:3!important;grid-row:2!important;}
+  .right-panel-resize-handle{display:block!important;grid-column:4!important;grid-row:2!important;align-self:stretch;}
+  .right-panel{grid-column:5!important;grid-row:2!important;height:100%!important;max-height:calc(100vh - 100px)!important;min-height:0!important;overflow:hidden!important;
+    width:var(--right-panel-drawer-width,360px)!important;flex:0 0 auto;}
+  .right-panel .detail{height:100%!important;max-height:100%!important;}
+}
+@media (max-width:1280px) and (min-width:861px){
+  :root{--control-panel-width:297px;}
+  body{overflow:auto}
+  .app{
+    grid-template-columns:var(--control-panel-drawer-width,var(--control-panel-width,297px)) 10px minmax(320px,1fr)!important;
+    grid-template-rows:minmax(76px,auto) 620px auto!important;
+    gap:12px!important;
+  }
+  header{grid-column:1/-1!important;}
+  .left-panel{grid-column:1!important;grid-row:2!important;}
+  .control-panel-resize-handle{display:block;grid-column:2!important;grid-row:2!important;align-self:stretch;}
+  .center-panel{grid-column:3!important;grid-row:2!important;height:620px;overflow:hidden;}
+  .right-panel{grid-column:1/-1!important;grid-row:3!important;}
+}
+@media (max-width:860px){
+  .homeoxnet-logo{height:41.4px;max-width:100vw;}
+  .control-panel-resize-handle{display:none!important;}
+  .app{grid-template-columns:1fr!important;}
+  .left-panel,.center-panel,.right-panel{grid-column:1!important;}
+}
+/* Centered HomeoXNet marks for both entry surfaces. */
+.entry-card>h1{display:flex;justify-content:center;align-items:center;}
+.entry-homeoxnet-logo{display:block;width:auto;height:66.24px;max-width:min(100vw,892.8px);object-fit:contain;}
+.intro-homeoxnet-logo{display:block;width:auto;height:57.6px;max-width:min(100vw,748.8px);margin:0 auto;object-fit:contain;}
+@media (max-width:860px){.entry-homeoxnet-logo{height:57.6px;max-width:100vw}.intro-homeoxnet-logo{height:48.96px;max-width:100vw}}
+
+/* Keep the simulator's in-page header concise and centered on phones. */
+@media (max-width:860px){
+  header>div:first-child{width:100%;}
+  header>div:first-child>h1{display:flex;justify-content:center;}
+  .simulator-title-line{justify-content:center;flex-wrap:wrap;}
+  .homeoxnet-logo{margin:0 auto;}
+  .scenario-picker{grid-column:1/-1;display:flex;flex-wrap:wrap;width:100%;gap:8px;}
+}
+.intro-premise{margin:0 0 14px!important;padding:10px 12px;border-left:3px solid var(--accent);background:rgba(24,214,255,.07);border-radius:0 10px 10px 0;}
+.intro-video-row{text-align:center;margin:16px 0 2px!important;font-weight:800;}
+
+/* Right column panels (2026-08-01). The rules above use !important, so the guided-lesson panel
+   needs its own scroll containment restated at each breakpoint rather than a single global one.
+   The compensation timeline that used to share this column was removed with mode B. */
+@media (min-width:1281px){
+  .right-panel{grid-template-rows:auto minmax(0,1fr)!important;}
+
+  .right-panel .detail{height:auto!important;max-height:100%!important;min-height:0!important;overflow:auto!important;}
+}
+@media (max-width:1280px) and (min-width:861px){
+  .right-panel{grid-template-columns:300px minmax(0,1fr)!important;grid-template-rows:minmax(0,1fr)!important;}
+}
+@media (max-width:860px){
+  .right-panel{grid-template-columns:1fr!important;grid-template-rows:auto minmax(260px,58vh)!important;}
+}
+@media (max-width:430px){
+  .right-panel{grid-template-rows:auto minmax(240px,54vh)!important;}
+}
+
+/* Learning modes (2026-07-30). The right column always shows exactly three panels, because the
+   guided-perturbation panel and the compensation panel are mutually exclusive by mode, so the
+   existing three-row templates keep working untouched. Only two things need saying here: the
+   guided panel needs the same scroll containment the compensation panel already has, and in
+   "compensation and its limits" the timeline has to become the LARGEST panel rather than a side
+   one - which means it takes the 1fr row and the guide panel gives it back. The rules above use
+   !important, so each breakpoint has to be restated rather than overridden globally. */
+@media (min-width:1281px){
+  .right-panel .guided-panel{min-height:0!important;max-height:52vh!important;overflow:auto!important;}
+}
+@media (max-width:1280px) and (min-width:861px){
+  .right-panel .guided-panel{min-height:0!important;max-height:100%!important;overflow:auto!important;}
+}
+@media (max-width:860px){
+  .right-panel .guided-panel{max-height:none!important;overflow:visible!important;}
+}
+/* The mode switch is the first thing in the header on phones, on its own row, because it is the
+   one control that changes what everything else means. */
+@media (max-width:860px){
+  .mode-switch-wrap{grid-column:1/-1;width:100%;}
+  .mode-menu-wrap{display:flex;width:100%;}
+  .mode-menu-btn{max-width:none;width:100%;}
+  .mode-menu{left:0;right:0;min-width:0;width:100%;}
+  .mode-item{white-space:normal;}
+}
+
+/* Header actions on phones (2026-08-03): four rows, not five.
+   Six controls in a two-column grid produced 1-1-1-2-1, because three of them claimed the full
+   width and the leftovers could only pair up once. A six-column track lets a row split
+   four-and-two or in half, so a short control can share a line with a long one.
+   Each width is chosen by the longest label the control has to hold in EITHER language, since
+   one grid serves both:
+     mode      "Basic: one loop, one system"  - 6, and it is a two-line button anyway
+     report    "Stop and Download Report"     - 4
+     language  "English" / "中文"              - 2, the shortest label in the header
+     scenario  a disease name, already ellipsised, but the menu below it wants the full width
+     zero      "Zero interventions"           - 3, it needs about 140px
+     restart   "Restart" / "重新开始"          - 3
+   A three-up row of zero/restart/language was the obvious alternative and does not survive
+   English: "Zero interventions" does not fit in a third of a 375px screen, on one line or two.
+
+   Rows and columns are both explicit. The language link is last in the markup but belongs
+   beside the report button, and sparse auto-flow never walks its cursor backwards, so left to
+   itself it dropped to a row of its own - that was the fifth row. `order` is the tidier way to
+   express this and was tried first; it is not used because it did not survive contact with a
+   real browser here, where a grid item's computed order stayed 0 even when set inline. Explicit
+   placement has no such ambiguity, and the one thing it costs - a hole when a control is hidden
+   - is handled directly by the basic-mode rule below. */
+@media (max-width:860px){
+  /* stretch, not center: two controls sharing a row are bars of the same height, and the base
+     rule's align-items:center left the language link 2px taller than the button beside it. */
+  .top-actions{grid-template-columns:repeat(6,1fr);align-items:stretch;}
+  .top-actions>.mode-switch-wrap{grid-row:1;grid-column:1/-1;}
+  .top-actions>.report-btn{grid-row:2;grid-column:1/5;}
+  .top-actions>#langSwitch{grid-row:2;grid-column:5/7;display:flex;align-items:center;justify-content:center;}
+  .top-actions>.scenario-picker{grid-row:3;grid-column:1/-1;}
+  .top-actions>#resetControls{grid-row:4;grid-column:1/4;}
+  .top-actions>#restart{grid-row:4;grid-column:4/7;}
+  /* Basic learning mode hides the disease picker, so the two session buttons move up into the
+     row it would have occupied instead of leaving a gap in the middle of the header. */
+  body.mode-trace .top-actions>#resetControls{grid-row:3;}
+  body.mode-trace .top-actions>#restart{grid-row:3;}
+}
+/* Below about 380px the widths above stop having slack: "Stop and Download Report" wants 205px
+   and four of six columns is 181px at 320px wide. Trimming the horizontal padding and a point
+   of type buys back more than the deficit, which keeps the four-row shape rather than letting
+   one label spill and push the header back to five. */
+@media (max-width:379px){
+  .top-actions>button,.top-actions>#langSwitch{padding-left:8px;padding-right:8px;font-size:13px;}
+}

@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+.npm/
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+!.env.ai.example
+*.local
+
+# Logs and runtime state
+logs/
+*.log
+*.pid
+*-events.jsonl
+*-quota.json
+
+# OS and editor files
+.DS_Store
+__MACOSX/
+._*
+Thumbs.db
+Desktop.ini
+.idea/
+.vscode/
+*.swp
+*~
+
+# Local AI/agent state
+.claude/
+.codex/
+.agents/

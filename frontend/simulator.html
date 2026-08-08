@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HomeoXNet</title>
+  <link rel="stylesheet" href="style.css?v=20260803-osm-sync-v1" />
+  <link rel="stylesheet" href="layout-fixes.css?v=20260803-osm-sync-v1" />
+</head>
+<body>
+<div class="app">
+  <header>
+    <div>
+      <div class="simulator-title-line">
+        <h1 id="titleText"><img class="homeoxnet-logo" src="assets/homeoxnet-logo.png" alt="HomeoXNet" /></h1>
+      </div>
+      <div class="creator-line" id="creatorText"><span class="creator-primary">制作人：<a class="creator-link" href="https://www.kuaiyu.site/" target="_blank" rel="noopener noreferrer">于快</a> 贵州医科大学（yukuai@gmc.edu.cn）</span> <span class="creator-help-links"><a href="#" id="desktopGuideLink" class="inline-help-link">详尽说明</a><a href="#" id="mobileHelpLink" class="inline-help-link">手机版使用方法</a></span></div>
+    </div>
+    <div class="top-actions">
+      <!-- One entry, one level. Two side-by-side tabs, each carrying its own explanatory question,
+           was three lines of header copy for a choice between two things; the menu says the same
+           thing in one control and names each option well enough not to need the gloss. -->
+      <div class="mode-switch-wrap">
+        <div class="mode-menu-wrap">
+          <button id="modeMenuBtn" class="mode-menu-btn" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="modeMenu">
+            <span class="mode-menu-kicker" id="modeLabel">学习模式</span><span class="mode-menu-current" id="modeMenuLabel">高级学习：复杂网络</span><i class="scenario-caret" aria-hidden="true"></i>
+          </button>
+          <div id="modeMenu" class="mode-menu" role="menu" aria-labelledby="modeMenuBtn" hidden></div>
+        </div>
+      </div>
+      <button id="reportBtn" class="report-btn" type="button" data-recording="false">停止并下载报告</button>
+      <!-- One entry, two levels. The two <select> elements below are kept, hidden, as the state
+           and event bus: every downstream behaviour (restart prompt, session report, learning
+           events) already hangs off their change events, so the menu drives them rather than
+           reimplementing any of it. -->
+      <div class="scenario-picker" aria-label="Clinical challenge scenario">
+        <div class="scenario-menu-wrap">
+          <button id="scenarioMenuBtn" class="scenario-menu-btn" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="scenarioMenu">
+            <span id="scenarioMenuLabel">选择疾病</span><i class="scenario-caret" aria-hidden="true"></i>
+          </button>
+          <div id="scenarioMenu" class="scenario-menu" role="menu" aria-labelledby="scenarioMenuBtn" hidden></div>
+          <!-- The reference badge is absolutely positioned against this wrapper, so it has to
+               live inside it: as a sibling of the wrapper it anchored to the nearest positioned
+               ancestor further up and drifted away from the button entirely. -->
+          <a id="scenarioRefLink" class="scenario-ref-link" href="#" target="_blank" rel="noopener noreferrer" hidden></a>
+        </div>
+        <select id="scenarioCategory" class="scenario-hidden-select" tabindex="-1" aria-hidden="true"></select>
+        <select id="scenario" class="scenario-hidden-select" tabindex="-1" aria-hidden="true" disabled></select>
+      </div>
+      <button id="resetControls">归零干预</button>
+      <button id="restart" class="danger">重新开始</button>
+      <a id="langSwitch" class="mini-link" href="simulator.html?lang=en">English</a>
+    </div>
+  </header>
+
+  <section class="panel left-panel">
+    <div class="panel-title">
+      <div class="control-title-left">
+        <h2 id="controlTitle">干预控制台</h2>
+        <button class="control-toggle-btn" id="controlToggle" type="button" aria-expanded="true"></button>
+      </div>
+      <span class="small" id="controlHint" hidden></span>
+    </div>
+    <div class="filters" id="filters"></div>
+    <div class="controls" id="controls"></div>
+  </section>
+  <div class="control-panel-resize-handle" id="controlPanelResizeHandle" role="separator" aria-orientation="vertical" aria-label="拖动调整干预控制台宽度&#10;双击隐藏/展开" title="拖动调整干预控制台宽度&#10;双击隐藏/展开"></div>
+
+  <main class="center-panel">
+    <section class="panel network-wrap">
+      <div class="panel-title">
+        <div class="network-title-left">
+          <h2 id="networkTitle" tabindex="-1">稳态复杂网络</h2>
+          <div class="network-layout-actions">
+            <button id="topologyNetworkLayout" class="network-layout-button network-topology-layout" type="button" aria-controls="network" hidden>失衡机制视图</button>
+            <button id="resetNetworkLayout" class="network-layout-button network-layout-reset" type="button" aria-controls="network" hidden>恢复网络视图</button>
+          </div>
+        </div>
+        <span class="small" id="networkHint">节点颜色代表偏离方向：黄/红偏高，青/蓝偏低；边越亮影响越强</span>
+      </div>
+      <div class="network-canvas">
+        <div class="mobile-stability-hud" aria-live="polite">
+          <div class="mobile-stability-row">
+            <span id="mobileStabilityLabel">生命稳定度</span>
+            <strong id="mobileHealthNum">100</strong>
+          </div>
+          <div class="mobile-healthbar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100" aria-labelledby="mobileStabilityLabel">
+            <div id="mobileHealthFill" class="mobile-healthfill"></div>
+          </div>
+        </div>
+        <div class="network-stage"><svg id="network" viewBox="0 -12 920 580" preserveAspectRatio="xMidYMid meet"></svg></div>
+      </div>
+      <div class="legend" id="legend"></div>
+    </section>
+    <div class="network-resize-handle" id="networkResizeHandle" role="separator" aria-orientation="horizontal" aria-label="拖动调整稳态复杂网络高度&#10;双击隐藏/展开" title="拖动调整稳态复杂网络高度&#10;双击隐藏/展开"></div>
+    <section class="bottom-panel replay-only">
+      <div class="panel replay-console">
+        <div class="panel-title compact-title">
+          <div class="replay-title-left">
+            <h2 id="replayTitle">回放控制台</h2>
+            <span class="small replay-hidden-tag" id="replayHiddenTag" hidden>（已隐藏）</span>
+          </div>
+          <div class="replay-title-right">
+            <span class="small" id="timeText">0.0 s</span>
+            <button class="replay-toggle-btn" id="replayToggle" type="button" aria-expanded="true"></button>
+          </div>
+        </div>
+        <div class="replay-body" id="replayBody">
+          <div class="replay-transport">
+            <button id="pauseBtn" class="primary">暂停</button>
+            <button id="replayPlay" type="button" class="replay-play">▶ 回放</button>
+            <button id="replayToStart" type="button" class="replay-step" aria-label="回到开头">⏮</button>
+            <button id="replayLive" type="button" class="replay-live" disabled>回到实时</button>
+            <span class="small replay-speed-label" id="replaySpeedLabel">回放速度</span>
+            <div class="replay-speed" id="replaySpeed" role="group" aria-labelledby="replaySpeedLabel"></div>
+          </div>
+          <div class="replay-scrub-row">
+            <input id="replayScrub" class="replay-scrub" type="range" min="0" max="1000" step="1" value="1000" aria-label="回放进度" />
+            <span class="small replay-readout" id="replayReadout">0 秒 / 0 秒</span>
+          </div>
+          <p class="small replay-hint" id="replayHint">回放速度只作用于这段录像，不改变右侧「观察时间尺度」的模拟压缩。</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div class="right-panel-resize-handle" id="rightPanelResizeHandle" role="separator" aria-orientation="vertical" aria-label="拖动调整右栏宽度&#10;双击隐藏/展开" title="拖动调整右栏宽度&#10;双击隐藏/展开"></div>
+
+  <aside class="right-panel">
+    <section class="panel status">
+      <div class="health-row"><span class="health-label" id="stabilityLabel">生命稳定度</span><span id="healthNum" class="health-num">100</span></div>
+      <div class="healthbar"><div id="healthFill" class="healthfill"></div></div>
+      <div class="time-console" id="timeConsole">
+        <div class="time-console-head">
+          <b id="lensTitle">观察时间尺度</b>
+          <button id="autoLensToggle" class="auto-lens-toggle" type="button" aria-pressed="true">自动</button>
+        </div>
+        <div class="lens-tabs" id="lensTabs" role="group" aria-labelledby="lensTitle"></div>
+        <div class="time-readout">
+          <span class="sim-clock" id="simClock">0 秒</span>
+          <span class="time-rate" id="compressionText">1 秒真实 = 1 秒模拟</span>
+        </div>
+        <div class="speed-row">
+          <button id="speedDown" class="speed-step" type="button" aria-label="放慢">−</button>
+          <input id="speed" type="range" min="0" max="5" step="1" value="3" aria-valuetext="1×" />
+          <button id="speedUp" class="speed-step" type="button" aria-label="加快">+</button>
+          <span class="speed-value" id="speedText">×1</span>
+        </div>
+        <div class="time-window" id="lensFocus"></div>
+        <div class="time-notice" id="timeNotice" hidden></div>
+      </div>
+    </section>
+    <section class="panel guided-panel" id="guidedPanel">
+      <div class="panel-title compact-title">
+        <h3 id="guidedTitle">选一个扰动</h3>
+        <span class="small" id="guidedHint">每个扰动只动一条环路</span>
+      </div>
+      <div id="lessonSystemTabs" class="lesson-system-tabs" role="group" aria-label="选择系统"></div>
+      <div id="guidedList" class="guided-list"></div>
+      <div class="guided-actions">
+        <button id="guidedClear" type="button">全部归零</button>
+      </div>
+    </section>
+    <section class="panel detail">
+      <h3 id="detailTitle">说明</h3>
+      <p id="detailText">点击网络中的任意节点，或干预控制台中的任意参数卡，即可在此查看该参数的说明。</p>
+      <div class="clinic-box">
+        <div class="clinic-head"><b id="clinicTitle">临床病情评估</b><span id="clinicHint">正确策略可改善，错误策略会加速恶化</span></div>
+        <div id="diagnosisList" class="diagnosis-list"></div>
+      </div>
+      <div class="rules" id="rulesBox"></div>
+      <div class="pill-list" id="dangerPills"></div>
+    </section>
+</aside>
+</div>
+<div id="mobileNodeControlPopover" class="mobile-node-control-popover" role="dialog" hidden>
+  <button id="mobileNodeControlClose" class="mobile-node-control-close" type="button" aria-label="关闭参数控制">×</button>
+  <div id="mobileNodeControlSlot" class="mobile-node-control-slot"></div>
+</div>
+<button id="mobileJumpBtn" class="mobile-jump-btn" type="button" aria-label="跳转到干预控制台">
+  <span class="mobile-jump-icon" aria-hidden="true">↓</span>
+</button>
+<div class="toast" id="toast"></div>
+<div class="sr-only" id="appStatus" role="status" aria-live="polite" aria-atomic="true"></div>
+<div class="modal-layer" id="desktopGuideModal" role="dialog" aria-modal="true" aria-labelledby="desktopGuideTitle">
+  <div class="modal-card guide-modal-card">
+    <button id="desktopGuideClose" class="modal-close" type="button" aria-label="关闭电脑版详尽说明">×</button>
+    <div class="guide-modal-head">
+      <h2 id="desktopGuideTitle">电脑版详尽说明</h2>
+      <a id="desktopGuideOpenNew" class="mini-link guide-open-new" href="#" target="_blank" rel="noopener noreferrer">新窗口打开</a>
+    </div>
+    <iframe id="desktopGuideFrame" class="guide-frame" title="电脑版详尽说明 PDF"></iframe>
+    <p id="desktopGuideFallback" class="guide-fallback">如果 PDF 没有显示，请点击“新窗口打开”。</p>
+  </div>
+</div>
+<div class="modal-layer" id="customParamsModal" role="dialog" aria-modal="true" aria-labelledby="customParamsTitle">
+  <div class="modal-card custom-params-card">
+    <button id="customParamsClose" class="modal-close" type="button" aria-label="关闭自定义参数">×</button>
+    <h2 id="customParamsTitle">自定义参数</h2>
+    <p id="customParamsIntro">选择希望保留在干预控制台中的参数。</p>
+    <div class="custom-param-tools">
+      <button id="customSelectAll" type="button">全选</button>
+      <button id="customClearAll" type="button">清空</button>
+    </div>
+    <div id="customParamGroups" class="custom-param-groups"></div>
+    <div class="custom-param-actions">
+      <button id="customCancel" type="button">取消</button>
+      <button id="customConfirm" class="primary" type="button">确认</button>
+    </div>
+  </div>
+</div>
+<div class="modal-layer show" id="introModal">
+  <div class="modal-card">
+    <h2 id="introTitle"><img class="intro-homeoxnet-logo" src="assets/homeoxnet-logo.png" alt="HomeoXNet" /></h2>
+    <div id="introBody" class="intro-guide">
+      <h3>使用指南：</h3>
+      <ul>
+        <li>调节心血管、呼吸、肾脏、代谢和激素相关参数，模拟生理扰动或临床情境</li>
+        <li>观察神经反射、体液与内分泌调节，以及多器官反馈如何共同维持稳态</li>
+        <li>尝试识别最先变化的指标、代偿方向及失代偿征象，并用尽量少的干预恢复稳定</li>
+        <li>可逐个扰动变量，也可选择挑战场景进行临床推理训练</li>
+        <li><a class="intro-video-link" href="https://www.bilibili.com/video/BV1wpMA6eEn9" target="_blank" rel="noopener noreferrer">观看具体操作视频</a></li>
+      </ul>
+    </div>
+    <p class="creator" id="introCreator">制作人：<a class="creator-link" href="https://www.kuaiyu.site/" target="_blank" rel="noopener noreferrer">于快</a> 贵州医科大学（yukuai@gmc.edu.cn）</p>
+    <button id="startBtn" class="primary large-btn">开始模拟</button>
+  </div>
+</div>
+<div class="modal-layer" id="mobileHelpModal" role="dialog" aria-modal="true" aria-labelledby="mobileHelpTitle">
+  <div class="modal-card mobile-help-card">
+    <button id="mobileHelpClose" class="modal-close" type="button" aria-label="关闭手机版使用方法">×</button>
+    <div id="mobileHelpBody" class="mobile-help-body">
+      <h2 id="mobileHelpTitle">手机版使用方法：</h2>
+      <p>可通过以下两种方式进行干预：</p>
+      <ul>
+        <li>点击“复杂稳态网络”中的任一节点，可在节点旁直接调整对应参数；点击卡片右上角 × 或卡片外区域关闭</li>
+        <li>点击右下角半透明跳转按钮，可在上方观察区与底部完整“干预控制台”之间快速切换</li>
+        <li>调整后，在“复杂稳态网络”和右栏“生命稳定度”中观察系统反应</li>
+      </ul>
+    </div>
+  </div>
+</div>
+<div class="modal-layer" id="wechatReportModal" role="dialog" aria-modal="true" aria-labelledby="wechatReportTitle">
+  <div class="modal-card wechat-report-card">
+    <h2 id="wechatReportTitle">微信中的报告保存</h2>
+    <p id="wechatReportBody">微信内置浏览器不允许网页直接下载 HTML 文件。报告已生成为临时安全链接，可在微信中直接查看。如需保存文件，请点击右上角 … 选择“在浏览器打开”，或复制链接到系统浏览器。链接 1 小时后失效。</p>
+    <input id="wechatReportUrl" class="wechat-report-url" type="text" readonly aria-label="报告链接">
+    <div class="gameover-actions">
+      <a id="wechatReportOpen" class="entry-btn primary" href="#" target="_blank" rel="noopener">在微信中查看报告</a>
+      <button id="wechatReportCopy" type="button">复制报告链接</button>
+      <button id="wechatReportClose" type="button">关闭</button>
+    </div>
+  </div>
+</div>
+<div class="modal-layer" id="restartReportModal" role="dialog" aria-modal="true" aria-labelledby="restartReportTitle">
+  <div class="modal-card restart-report-card">
+    <button id="restartReportClose" class="modal-close" type="button" aria-label="关闭并继续当前会话">×</button>
+    <h2 id="restartReportTitle">会话报告尚未下载</h2>
+    <p id="restartReportBody">当前会话正在进行，你尚未下载报告。是否先下载报告再重新开始？</p>
+    <div class="gameover-actions">
+      <button id="restartDownload" class="primary large-btn">下载报告并重新开始</button>
+      <button id="restartWithoutDownload" class="danger large-btn">不下载，直接重新开始</button>
+    </div>
+  </div>
+</div>
+<div class="modal-layer" id="aiReportModal" role="dialog" aria-modal="true" aria-labelledby="aiReportChoiceTitle">
+  <div class="modal-card ai-report-card">
+    <div id="aiReportSelectView">
+      <h2 id="aiReportChoiceTitle">选择报告类型</h2>
+      <p id="aiReportChoiceBody">普通报告会立即生成；AI 医学解读会分析本次学习行为及相关生理学与病理生理学知识。</p>
+      <div class="gameover-actions">
+        <button id="aiReportWithoutAi" class="large-btn" type="button">下载普通报告</button>
+        <button id="aiReportWithAi" class="primary large-btn" type="button">报告 + AI 医学解读</button>
+        <button id="aiReportCancel" type="button">取消</button>
+      </div>
+    </div>
+    <div id="aiReportConfirmView" hidden>
+      <h2 id="aiQuotaConfirmTitle">确认生成 AI 报告</h2>
+      <p id="aiQuotaConfirmBody">因为算力原因，每个<button id="aiQuotaHiddenLink" class="ai-hidden-link" type="button">用户</button>每日只能生成 3 份报告。你确定下载吗？</p>
+      <p class="ai-quota-remaining" id="aiQuotaRemaining">正在查询今天的剩余次数…</p>
+      <label class="ai-suppress-label"><input id="aiSuppressReminder" type="checkbox"> <span id="aiSuppressReminderLabel">不再提醒</span></label>
+      <div class="gameover-actions">
+        <button id="aiQuotaConfirm" class="primary large-btn" type="button">确定</button>
+        <button id="aiQuotaDirect" class="large-btn" type="button">不，只下载普通报告</button>
+        <button id="aiQuotaBack" type="button">返回</button>
+      </div>
+    </div>
+    <div id="aiReportWaitingView" hidden>
+      <div class="ai-wait-spinner" aria-hidden="true"></div>
+      <h2 id="aiReportWaitingTitle">AI 正在进行医学解读</h2>
+      <p id="aiReportWaitingBody">请保持页面开启，预计需要 1–2 分钟。若模型超时或调用失败，系统会自动下载不含 AI 解读的原报告。</p>
+      <p class="ai-quota-remaining" id="aiWaitingRemaining">本次生成后，今天还可生成 2 份 AI 报告。</p>
+      <div class="ai-wait-pulse" aria-hidden="true"><span></span><span></span><span></span></div>
+    </div>
+  </div>
+</div>
+<div class="ai-exempt-notice" id="aiQuotaExemptNotice" role="status" aria-live="polite">
+  <span id="aiQuotaExemptText">你已豁免AI报告下载次数限制</span>
+  <button id="aiQuotaExemptClose" type="button" aria-label="关闭">×</button>
+</div>
+<div class="modal-layer" id="gameOverModal" role="dialog" aria-modal="true" aria-labelledby="gameOverTitle">
+  <div class="modal-card gameover-card">
+    <h2 id="gameOverTitle">稳态失衡</h2>
+    <p id="gameOverBody">生命稳定度已降至 0，系统进入失代偿。你可以停止并下载本次会话报告，也可以在不再干预的情况下继续观察反馈演化。</p>
+    <p id="gameOverFastNote" class="gameover-fast-note" hidden></p>
+    <div class="gameover-reasons" id="gameOverReasons"></div>
+    <div class="gameover-actions">
+      <button id="gameOverDownload" class="primary large-btn">下载报告</button>
+      <button id="gameOverReplay" class="large-btn">回放本次过程</button>
+      <button id="gameOverObserve" class="large-btn">继续观察</button>
+      <button id="gameOverRestart" class="danger large-btn">重新开始</button>
+    </div>
+  </div>
+</div>
+<script src="session-report.js?v=20260723-report-links-v1"></script>
+<script src="topology-layout.js?v=20260719-imbalance-mechanism-v1"></script>
+<script src="app.js?v=20260803-osm-sync-v1"></script>
+</body>
+</html>

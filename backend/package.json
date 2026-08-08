@@ -1,0 +1,24 @@
+{
+  "name": "homeostasis-simulator-backend",
+  "version": "1.0.0",
+  "private": true,
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "PORT=3002 node server.js",
+    "test:scenarios": "node scenarioRegression.js",
+    "test:rate-limits": "node rateLimitRegression.js",
+    "test:reports": "node ../frontend/sessionReportRegression.js",
+    "test:layout": "node ../frontend/networkLayoutRegression.js",
+    "test:model-transparency": "node modelTransparencyRegression.js",
+    "test:medical-ai": "node medicalAiRegression.js && node aiQuotaRegression.js && node medicalAiRouteRegression.js",
+    "test:temporal": "node temporalRegression.js",
+    "test:learning-modes": "node learningModeRegression.js",
+    "test": "npm run test:scenarios && npm run test:temporal && npm run test:learning-modes && npm run test:model-transparency && npm run test:layout && npm run test:reports"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "helmet": "^7.1.0",
+    "express-rate-limit": "^7.4.0"
+  }
+}

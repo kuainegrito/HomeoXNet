@@ -35,7 +35,8 @@ const child=spawn(process.execPath,['server.js'],{
     HOMEOSTASIS_AI_TIMEOUT_MS:'2000',
     HOMEOSTASIS_AI_QUOTA_PATH:quotaPath,
     HOMEOSTASIS_AI_QUOTA_SALT:'medical-ai-route-regression-salt',
-    VISIT_LOG_PATH:path.join(__dirname,'logs','medical-ai-route-visits.jsonl'),
+    // This suite exercises the prompt-log write path, which is opt-in at runtime.
+    HOMEOSTASIS_LEARNING_LOG_ENABLED:'1',
     HOMEOSTASIS_LEARNING_LOG_PATH:path.join(__dirname,'logs','medical-ai-route-learning.jsonl')
   },
   stdio:['ignore','pipe','pipe']

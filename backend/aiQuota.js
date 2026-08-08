@@ -5,7 +5,10 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const DEFAULT_LIMIT = 3;
-const DEFAULT_CACHE_PATH = '/var/lib/kuaiyu-site/homeostasis-ai-quota.json';
+// Local by default so a fresh clone works without root. Point HOMEOSTASIS_AI_QUOTA_PATH at a
+// durable location (e.g. /var/lib/<yoursite>/homeostasis-ai-quota.json) for a real deployment:
+// this file is what stops one visitor from spending your whole API budget.
+const DEFAULT_CACHE_PATH = path.join(__dirname, 'logs', 'homeostasis-ai-quota.json');
 
 function positiveInt(value,fallback){
   const number=Number(value);

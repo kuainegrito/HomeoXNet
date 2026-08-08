@@ -1285,9 +1285,30 @@ const IDLE_LOGOUT_MS = 5 * 60 * 1000;
 const learningPageStartedAtIso = new Date().toISOString();
 const learningPageStartedAtPerf = performance.now();
 const learningPageId = makeLearningId('homeostasis-page');
-const learningVisitorId = learningStoredId(learningStorage('local'), 'kuaiyu_visit_visitor_id', 'visitor');
-const learningVisitSessionId = learningStoredId(learningStorage('session'), 'kuaiyu_visit_session_id', 'visit');
-const learningSessionId = learningStoredId(learningStorage('session'), 'homeostasis_learning_session_id', 'learn');
+// Analytics are opt-in (backend: HOMEOSTASIS_LEARNING_LOG_ENABLED). Until the server says they are
+// on, this stays null and nothing is sent. `false` means the answer arrived and was no; `true` means
+// yes. The ids below are deliberately NOT created at module scope: reading them is what writes them
+// to localStorage/sessionStorage, so a disabled instance must never ask for one.
+let learningEnabled = null;
+function learningIds(){
+  if(learningIds.cached) return learningIds.cached;
+  learningIds.cached = {
+    visitorId: learningStoredId(learningStorage('local'), 'kuaiyu_visit_visitor_id', 'visitor'),
+    visitSessionId: learningStoredId(learningStorage('session'), 'kuaiyu_visit_session_id', 'visit'),
+    learningSessionId: learningStoredId(learningStorage('session'), 'homeostasis_learning_session_id', 'learn')
+  };
+  return learningIds.cached;
+}
+// Asked once, before anything can be logged. A failure here is treated as "off": a clone that cannot
+// reach its own backend must not start hoarding ids on the guess that logging might be wanted.
+async function loadTelemetryConfig(){
+  try{
+    const res = await fetch(`${API_BASE}/api/client-config`, {headers:{'Accept':'application/json'}});
+    learningEnabled = res.ok ? Boolean((await res.json()).learningLogEnabled) : false;
+  }catch(err){
+    learningEnabled = false;
+  }
+}
 let learningSimStartedAtPerf = null;
 let learningHeartbeatTimer = 0;
 let learningFailureLogged = false;
@@ -1394,10 +1415,11 @@ function learningDiseaseActionType(majorLabel, specificLabel){
 // records used to be sent without it - lands in a phantom session keyed by ip+day and never
 // appears in the detail view of the session that produced it.
 function learningClientBlock(){
+  const ids = learningIds();
   return {
-    visitorId: learningVisitorId,
-    sessionId: learningVisitSessionId,
-    learningSessionId,
+    visitorId: ids.visitorId,
+    sessionId: ids.visitSessionId,
+    learningSessionId: ids.learningSessionId,
     pageId: learningPageId,
     language: navigator.language || null,
     appLanguage: lang,
@@ -1437,6 +1459,7 @@ function learningBasePayload(eventType, action={}, snap=latest){
   };
 }
 function sendLearningEvent(eventType, action={}, options={}){
+  if(learningEnabled !== true) return;
   try{
     const body = JSON.stringify(learningBasePayload(eventType, action, options.snapshot || latest));
     if(options.final && navigator.sendBeacon){
@@ -1758,6 +1781,7 @@ function compactReportForAi(report){
 // daily AI quota is untouched. Once per session run, on whichever end comes first.
 let aiPromptLoggedForSession=false;
 async function logAiPromptForSession(trigger){
+  if(learningEnabled !== true) return;
   if(aiPromptLoggedForSession || !sid || !sessionRecorder.active) return;
   aiPromptLoggedForSession=true;
   try{
@@ -5674,6 +5698,8 @@ function wireEvents(){
   });
 }
 async function init(){
+  // First, before wireEvents() can arm anything that logs.
+  await loadTelemetryConfig();
   loadLayoutPreferences();
   if(Number.isFinite(savedNetworkPanelHeight)){
     document.querySelector('.center-panel')?.style.setProperty('--network-panel-height', `${Math.round(savedNetworkPanelHeight)}px`);

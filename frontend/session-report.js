@@ -794,8 +794,16 @@
     constructor(options={}){
       this.sampleIntervalMs=Math.max(250,finite(options.sampleIntervalMs,DEFAULT_SAMPLE_INTERVAL_MS));
       this.maxSamples=Math.max(500,Math.round(finite(options.maxSamples,DEFAULT_MAX_SAMPLES)));
-      this.browserLocalSessionId=browserSessionId();
+      // Materialised on first use, not here: reading it is what writes it to localStorage, and a
+      // learner who never asks for a report should not be left with a persistent id in their
+      // browser just for having opened the page.
+      this._browserLocalSessionId=null;
       this.reset(options.meta||null);
+    }
+
+    browserLocalSessionId(){
+      if(!this._browserLocalSessionId) this._browserLocalSessionId=browserSessionId();
+      return this._browserLocalSessionId;
     }
 
     reset(meta=null){
@@ -1140,7 +1148,7 @@
           stabilityReachedZero:this.firstZeroElapsed!=null,
           totalInterventions:actionIds.size,
           interventionEventRows:interventions.length,
-          browserLocalSessionId:this.browserLocalSessionId,
+          browserLocalSessionId:this.browserLocalSessionId(),
           sessionRunId:this.runId,
           language
         },

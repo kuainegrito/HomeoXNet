@@ -14,7 +14,8 @@
     "test:medical-ai": "node medicalAiRegression.js && node aiQuotaRegression.js && node medicalAiRouteRegression.js",
     "test:temporal": "node temporalRegression.js",
     "test:learning-modes": "node learningModeRegression.js",
-    "test": "npm run test:scenarios && npm run test:temporal && npm run test:learning-modes && npm run test:model-transparency && npm run test:layout && npm run test:reports"
+    "test:telemetry-gate": "node telemetryGateRegression.js",
+    "test": "npm run test:scenarios && npm run test:temporal && npm run test:learning-modes && npm run test:model-transparency && npm run test:layout && npm run test:reports && npm run test:telemetry-gate"
   },
   "dependencies": {
     "express": "^4.19.2",

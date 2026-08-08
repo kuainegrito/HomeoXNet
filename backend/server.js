@@ -26,15 +26,18 @@ const REPORT_MAX_BYTES = 8 * 1024 * 1024;
 const REPORT_MAX_ITEMS = 40;
 // An evidence pack runs to tens of KB; keep the whole thing so the prompt is replayable.
 const AI_PROMPT_LOG_MAX_CHARS = 200000;
-const VISIT_LOG_PATH = process.env.VISIT_LOG_PATH || '/var/log/kuaiyu-site/visit-events.jsonl';
-const FALLBACK_LOG_PATH = path.join(__dirname, 'logs', 'visit-events.jsonl');
-const LEARNING_LOG_PATH = process.env.HOMEOSTASIS_LEARNING_LOG_PATH || '/var/log/kuaiyu-site/homeostasis-learning-events.jsonl';
+// Classroom analytics are OPT-IN. A plain clone of this repository must not write a visitor id,
+// an IP address or a learner's click stream anywhere: the person running it has made no promise to
+// their users about that, and cannot make one on the author's behalf. Set
+// HOMEOSTASIS_LEARNING_LOG_ENABLED=1 to turn the learning log and the AI-prompt log back on, and
+// tell your users you have. The browser asks the server which mode it is in (GET /api/client-config)
+// and stays silent - no fetch, no beacon, no localStorage id - unless the answer is yes.
+const LEARNING_LOG_ENABLED = /^(1|true|yes|on)$/i.test(String(process.env.HOMEOSTASIS_LEARNING_LOG_ENABLED || '').trim());
+const LEARNING_LOG_PATH = process.env.HOMEOSTASIS_LEARNING_LOG_PATH || path.join(__dirname, 'logs', 'homeostasis-learning-events.jsonl');
 const FALLBACK_LEARNING_LOG_PATH = path.join(__dirname, 'logs', 'homeostasis-learning-events.jsonl');
 const sessions = new Map();
 const temporaryReports = new Map();
 const aiQuotaStore = new AiQuotaStore();
-let activeLogPath = null;
-let logPathReady = null;
 let activeLearningLogPath = null;
 let learningLogPathReady = null;
 
@@ -172,6 +175,8 @@ function mergeViciousCycleHistory(report, liveCycles){
 // the identical evidence pack and prompt and logs it, without calling any model, without touching
 // the quota, and without returning the prompt to the browser.
 app.post('/api/ai-prompt-log', aiPromptLogLimiter, express.json({limit:'2mb'}), async (req,res)=>{
+  // Opt-in only: the prompt carries the learner's full evidence pack alongside their IP.
+  if(!LEARNING_LOG_ENABLED) return res.status(204).end();
   const sid=String(req.body?.sid||'');
   if(!sessions.has(sid)) return res.status(404).json({error:'session_not_found'});
   try{
@@ -290,7 +295,11 @@ function getSession(req,res){
   return record.session;
 }
 
-app.get('/api/health', (req,res)=>res.json({ok:true, service:'homeostasis-simulator-api', medicalAiConfigured:isMedicalAiConfigured()}));
+app.get('/api/health', (req,res)=>res.json({ok:true, service:'homeostasis-simulator-api', medicalAiConfigured:isMedicalAiConfigured(), learningLogEnabled:LEARNING_LOG_ENABLED}));
+
+// What the browser is allowed to do, decided by the operator rather than by the page. Kept separate
+// from /api/health so the health probe stays an ops concern and this stays a privacy one.
+app.get('/api/client-config', (req,res)=>res.json({learningLogEnabled:LEARNING_LOG_ENABLED}));
 app.get('/api/meta', (req,res)=>res.json(meta(req.query.lang || 'zh')));
 
 app.post('/api/reports', reportCreateLimiter, express.text({type:'text/html',limit:REPORT_MAX_BYTES}), (req,res)=>{
@@ -453,25 +462,6 @@ function clientIp(req){
   );
 }
 
-async function ensureLogPath(){
-  if(logPathReady) return logPathReady;
-  logPathReady = (async()=>{
-    try{
-      await fs.promises.mkdir(path.dirname(VISIT_LOG_PATH), {recursive:true});
-      await fs.promises.appendFile(VISIT_LOG_PATH, '', 'utf8');
-      activeLogPath = VISIT_LOG_PATH;
-      return activeLogPath;
-    }catch(err){
-      await fs.promises.mkdir(path.dirname(FALLBACK_LOG_PATH), {recursive:true});
-      await fs.promises.appendFile(FALLBACK_LOG_PATH, '', 'utf8');
-      activeLogPath = FALLBACK_LOG_PATH;
-      console.warn(`Cannot write visit log to ${VISIT_LOG_PATH}; using ${FALLBACK_LOG_PATH}.`, err.message);
-      return activeLogPath;
-    }
-  })();
-  return logPathReady;
-}
-
 async function ensureLearningLogPath(){
   if(learningLogPathReady) return learningLogPathReady;
   learningLogPathReady = (async()=>{
@@ -566,6 +556,9 @@ async function logAiPrompt(req, sid, analysis, extra={}){
 }
 
 app.post('/api/learning-event', learningEventIpLimiter, learningEventSessionLimiter, async (req,res)=>{
+  // Opt-in only. Accepted and discarded rather than refused, so a browser that raced the
+  // /api/client-config answer does not spray errors into the console over a disabled feature.
+  if(!LEARNING_LOG_ENABLED) return res.status(204).end();
   try{
     await appendLearningEvent(req);
     res.status(204).end();

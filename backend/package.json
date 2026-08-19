@@ -11,7 +11,7 @@
     "test:reports": "node ../frontend/sessionReportRegression.js",
     "test:layout": "node ../frontend/networkLayoutRegression.js",
     "test:model-transparency": "node modelTransparencyRegression.js",
-    "test:medical-ai": "node medicalAiRegression.js && node aiQuotaRegression.js && node medicalAiRouteRegression.js",
+    "test:medical-ai": "node medicalAiRegression.js && node aiQuotaRegression.js && node aiEligibilityRegression.js && node medicalAiRouteRegression.js",
     "test:temporal": "node temporalRegression.js",
     "test:learning-modes": "node learningModeRegression.js",
     "test:telemetry-gate": "node telemetryGateRegression.js",

@@ -276,6 +276,13 @@ Object.assign(TEXT, lang === 'zh' ? {
   aiWaitingBody: '请保持页面开启，预计需要 1–2 分钟。若模型超时或调用失败，系统会自动下载不含 AI 解读的原报告。',
   aiReportReady: '包含 AI 医学解读的报告已生成。',
   aiFallbackDownloaded: 'AI 解读未完成，已自动下载原报告。',
+  aiGateIntro: '为节省算力，AI 医学解读只对可分析的会话开放：',
+  aiGateJoin: '；',
+  aiGateOutro: '。继续实验即可解锁；普通报告不受影响。',
+  aiGateActions: (need,have)=>`至少需要 ${need} 次干预（本次 ${have} 次）`,
+  aiGateWatch: (need,have)=>`至少需要观察 ${need} 秒（本次 ${have} 秒）`,
+  aiGateQuiet: (need,have)=>`干预前后至少要有 ${need} 秒不操作的观察（本次最长 ${have} 秒）`,
+  aiGateBlocked: '本次会话过于简单，未调用 AI 医学解读，已下载普通报告。',
   restartReportTitle: '\u4f1a\u8bdd\u62a5\u544a\u5c1a\u672a\u4e0b\u8f7d',
   restartReportBody: '\u5f53\u524d\u4f1a\u8bdd\u6b63\u5728\u8fdb\u884c\uff0c\u4f60\u5c1a\u672a\u4e0b\u8f7d\u62a5\u544a\u3002\u662f\u5426\u5148\u4e0b\u8f7d\u62a5\u544a\u518d\u91cd\u65b0\u5f00\u59cb\uff1f',
   restartDownload: '\u4e0b\u8f7d\u62a5\u544a\u5e76\u91cd\u65b0\u5f00\u59cb',
@@ -426,6 +433,13 @@ Object.assign(TEXT, lang === 'zh' ? {
   aiWaitingBody: 'Keep this page open for approximately 1–2 minutes. If the model times out or fails, the original report will download automatically without AI interpretation.',
   aiReportReady: 'The report with AI medical interpretation is ready.',
   aiFallbackDownloaded: 'AI interpretation was unavailable; the original report was downloaded.',
+  aiGateIntro: 'To save computing capacity, the AI interpretation is offered only for sessions it can analyse: ',
+  aiGateJoin: '; ',
+  aiGateOutro: '. Keep experimenting to unlock it; the standard report is unaffected.',
+  aiGateActions: (need,have)=>`at least ${need} interventions are needed (this session: ${have})`,
+  aiGateWatch: (need,have)=>`at least ${need} s of observation is needed (this session: ${have} s)`,
+  aiGateQuiet: (need,have)=>`at least ${need} s without touching the controls is needed (longest here: ${have} s)`,
+  aiGateBlocked: 'This session was too simple for an AI interpretation; the standard report was downloaded.',
   restartReportTitle: 'Session report not downloaded',
   restartReportBody: 'A session is in progress and you have not downloaded its report. Download the report before restarting?',
   restartDownload: 'Download Report and Restart',
@@ -1655,6 +1669,84 @@ function cancelScheduledControls(){
 async function waitForControlRequests(){
   await Promise.all(Object.values(controlRequestChains).map(promise=>Promise.resolve(promise).catch(()=>null)));
 }
+// Is this session worth an AI interpretation? - the browser's copy
+// ---------------------------------------------------------------------------------------
+// backend/aiEligibility.js is the authority: it refuses the call and spends no tokens on a
+// session that cannot be analysed. This mirror exists for one reason - so a learner is told
+// what their session still needs BEFORE they spend a click and two minutes of waiting on a
+// refusal. The thresholds are the server's own, delivered with the session, so the message
+// and the enforcement can never disagree about the numbers.
+//
+// Everything here is measured in real seconds. The time lens compresses simulated time by up
+// to ~11500x, so simulated duration says nothing about whether anybody was watching.
+const DEFAULT_AI_ELIGIBILITY={enforced:true, thresholds:{minActions:3, minWatchedSeconds:90, minQuietGapSeconds:20}};
+let aiEligibilityRules=DEFAULT_AI_ELIGIBILITY;
+function aiSessionMetrics(){
+  // One entry per action: a loaded scenario writes one event per parameter under a single
+  // actionId, and it was one click.
+  const spans=new Map();
+  (sessionRecorder.interventions||[]).forEach((event,index)=>{
+    const id=event?.actionId?`id:${event.actionId}`:`index:${index}`;
+    const start=Number.isFinite(event?.elapsed)?event.elapsed:null;
+    const end=Number.isFinite(event?.endElapsed)?event.endElapsed:start;
+    const span=spans.get(id);
+    if(!span){ spans.set(id,{start,end}); return; }
+    if(start!=null&&(span.start==null||start<span.start)) span.start=start;
+    if(end!=null&&(span.end==null||end>span.end)) span.end=end;
+  });
+  const timed=[...spans.values()].filter(span=>span.start!=null).sort((a,b)=>a.start-b.start);
+  // The recorder's clock starts at the first action; the lens tally starts with the run. The
+  // difference between them is how long the baseline was studied before anything was touched,
+  // which counts as observation like any other quiet stretch.
+  const sessionEnd=sessionRecorder.active?sessionRecorder.elapsedSeconds():null;
+  let watched=Object.values(sessionTimeScale.lensSeconds||{}).reduce((total,value)=>total+(Number(value)||0),0);
+  if(sessionEnd!=null) watched=Math.max(watched,sessionEnd);
+  const gaps=[];
+  if(timed.length&&sessionEnd!=null){
+    gaps.push(Math.max(0,watched-sessionEnd));
+    gaps.push(Math.max(0,sessionEnd-(timed[timed.length-1].end??timed[timed.length-1].start)));
+  }
+  for(let index=1;index<timed.length;index++){
+    gaps.push(Math.max(0,timed[index].start-(timed[index-1].end??timed[index-1].start)));
+  }
+  return {
+    actions:spans.size,
+    watchedSeconds:watched>0?watched:null,
+    longestQuietGapSeconds:gaps.length?Math.max(...gaps):null
+  };
+}
+function evaluateAiEligibilityLocally(){
+  const thresholds={...DEFAULT_AI_ELIGIBILITY.thresholds,...(aiEligibilityRules?.thresholds||{})};
+  const metrics=aiSessionMetrics();
+  const reasons=[];
+  if(metrics.actions<thresholds.minActions) reasons.push('too_few_actions');
+  if(metrics.watchedSeconds!=null&&metrics.watchedSeconds<thresholds.minWatchedSeconds) reasons.push('too_little_observation');
+  if(metrics.longestQuietGapSeconds!=null&&metrics.longestQuietGapSeconds<thresholds.minQuietGapSeconds) reasons.push('no_observation_after_actions');
+  return {eligible:aiEligibilityRules?.enforced===false||!reasons.length, reasons, metrics, thresholds};
+}
+function aiEligibilityMessage(result){
+  const whole=value=>Math.round(Number(value)||0);
+  const parts=result.reasons.map(reason=>{
+    if(reason==='too_few_actions') return TEXT.aiGateActions(whole(result.thresholds.minActions),result.metrics.actions);
+    if(reason==='too_little_observation') return TEXT.aiGateWatch(whole(result.thresholds.minWatchedSeconds),whole(result.metrics.watchedSeconds));
+    return TEXT.aiGateQuiet(whole(result.thresholds.minQuietGapSeconds),whole(result.metrics.longestQuietGapSeconds));
+  });
+  return `${TEXT.aiGateIntro}${parts.join(TEXT.aiGateJoin)}${TEXT.aiGateOutro}`;
+}
+function renderAiEligibilityGate(){
+  const result=evaluateAiEligibilityLocally();
+  const notice=$('aiReportGateNotice');
+  if(notice){
+    notice.textContent=result.eligible?'':aiEligibilityMessage(result);
+    notice.toggleAttribute('hidden',result.eligible);
+  }
+  const button=$('aiReportWithAi');
+  if(button){
+    button.disabled=!result.eligible;
+    button.setAttribute('aria-disabled',String(!result.eligible));
+  }
+  return result;
+}
 function setAiReportModalView(view){
   const modal=$('aiReportModal');
   if(!modal) return;
@@ -1670,6 +1762,7 @@ function hideAiReportModal(){
 function chooseAiInterpretation(){
   if(aiReportChoiceResolver) return Promise.resolve('cancel');
   currentAiQuota=null;
+  renderAiEligibilityGate();
   setAiReportModalView('select');
   return new Promise(resolve=>{ aiReportChoiceResolver=resolve; });
 }
@@ -1705,6 +1798,9 @@ async function fetchAiQuota(){
   return payload.quota;
 }
 async function beginAiReportChoice(){
+  // The button is disabled while the session is too thin; this re-check keeps the confirm view
+  // out of reach if it is ever reached another way.
+  if(!renderAiEligibilityGate().eligible) return;
   setAiReportModalView('confirm');
   renderAiQuota(null);
   try{
@@ -1809,6 +1905,16 @@ async function requestMedicalAiInterpretation(report){
       body:JSON.stringify({sid, client:learningClientBlock(), learningMode:activeMode, learningModeLabel:TEXT.modes?.[activeMode]?.name || activeMode, report:compactReportForAi(report)}),
       signal:controller.signal
     });
+    if(response.status===403){
+      // The server judged the session too thin to analyse. Nothing was charged and no model
+      // was called; the learner gets the standard report and a reason.
+      const refusal=await response.json().catch(()=>null);
+      if(refusal?.error==='ai_session_too_simple'){
+        const error=new Error('ai_session_too_simple');
+        error.code='ai_session_too_simple';
+        throw error;
+      }
+    }
     if(!response.ok) throw new Error(`AI analysis failed (${response.status}).`);
     const payload=await response.json();
     if(payload?.analysis?.status!=='complete'||!payload.analysis.text) throw new Error('AI analysis response was incomplete.');
@@ -1878,6 +1984,7 @@ async function generateSessionReport({stop=false}={}){
     const immutableSnapshot=sessionRecorder.buildSnapshot(latest,simulationStatus());
     let aiIncluded=false;
     let aiFallback=false;
+    let aiRefused=false;
     if(aiRequested){
       try{
         const aiPayload=await requestMedicalAiInterpretation(immutableSnapshot);
@@ -1885,7 +1992,7 @@ async function generateSessionReport({stop=false}={}){
         if(aiPayload.quota) renderAiQuota(aiPayload.quota);
         aiIncluded=true;
       }catch(error){
-        aiFallback=true;
+        if(error?.code==='ai_session_too_simple') aiRefused=true; else aiFallback=true;
         console.warn('Medical AI interpretation unavailable; downloading the original report.',error);
       }finally{
         hideAiReportModal();
@@ -1904,9 +2011,22 @@ async function generateSessionReport({stop=false}={}){
       aiRequested,
       aiIncluded,
       aiFallback,
+      aiRefused,
+      // What the eligibility gate saw. Logged on every download, granted or not, because these
+      // three numbers are the only evidence for whether the thresholds are set sensibly.
+      aiGate:(()=>{
+        const gate=evaluateAiEligibilityLocally();
+        return {
+          eligible:gate.eligible,
+          reasons:gate.reasons,
+          actions:gate.metrics.actions,
+          watchedSeconds:learningRound(gate.metrics.watchedSeconds,1),
+          quietGapSeconds:learningRound(gate.metrics.longestQuietGapSeconds,1)
+        };
+      })(),
       simTime:latest?learningRound(latest.simTime,1):null
     }, {snapshot:latest});
-    toast(aiFallback?TEXT.aiFallbackDownloaded:(aiIncluded?TEXT.aiReportReady:TEXT.reportReady));
+    toast(aiRefused?TEXT.aiGateBlocked:(aiFallback?TEXT.aiFallbackDownloaded:(aiIncluded?TEXT.aiReportReady:TEXT.reportReady)));
     return true;
   }catch(error){
     console.error(error);
@@ -5335,6 +5455,9 @@ async function startSession(){
   // spends a single frame accumulating damage that the chosen mode has promised not to count.
   const data = await api('/api/session/start', {lang, noThreat:modeConfig().noThreat});
   sid=data.sid; meta=data.meta; latest=data.snapshot; modelTransparencyOpen=false; parameterExplanations=Object.create(null); parameterExplanationRequests.clear();
+  // The AI-report thresholds come from the server, so raising one in the environment changes
+  // what the page tells the learner as well as what the API enforces.
+  aiEligibilityRules=data.aiEligibility||DEFAULT_AI_ELIGIBILITY;
   // The lens ladder is published by the engine, so the compression the learner is shown can
   // never disagree with the compression the solver actually used.
   timeMeta=meta.time;

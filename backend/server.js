@@ -17,6 +17,7 @@ const {callMedicalAnalysis, isConfigured:isMedicalAiConfigured, buildMedicalEvid
   medicalAiProvider === 'kimi' ? require('./medicalAiKimi') : require('./medicalAi');
 if(medicalAiProvider === 'kimi') console.log('Homeostasis AI provider: Moonshot Kimi (medicalAiKimi)');
 const {AiQuotaStore} = require('./aiQuota');
+const {evaluateAiEligibility, isEnabled:isAiEligibilityEnforced, publicConfig:aiEligibilityConfig, thresholdsFromEnv:aiEligibilityThresholds} = require('./aiEligibility');
 
 const app = express();
 const PORT = process.env.PORT || 3002;
@@ -201,6 +202,20 @@ app.post('/api/ai-analysis', medicalAiLimiter, express.json({limit:'2mb'}), asyn
   if(!sessions.has(sid)) return res.status(404).json({error:'session_not_found'});
   if(!isMedicalAiConfigured()) return res.status(503).json({error:'ai_not_configured'});
   const quotaKey=aiQuotaUserKey(req);
+  // A model call is only worth spending on a session that can actually be analysed, and the
+  // check runs before the quota is touched, so a refused report costs the learner nothing.
+  // Holders of the hidden exemption skip it: that gesture exists for demonstrating the feature,
+  // which is exactly the case where a two-click session is the point.
+  const eligibilityQuota=aiQuotaStore.publicStatus(quotaKey);
+  if(!eligibilityQuota.exempt){
+    const eligibility=evaluateAiEligibility(req.body?.report||{}, {
+      enforced:isAiEligibilityEnforced(),
+      thresholds:aiEligibilityThresholds()
+    });
+    if(!eligibility.eligible){
+      return res.status(403).json({error:'ai_session_too_simple', eligibility, quota:eligibilityQuota});
+    }
+  }
   let reservation;
   try{
     reservation=aiQuotaStore.reserve(quotaKey);
@@ -331,7 +346,10 @@ app.post('/api/session/start', startSessionLimiter, (req,res)=>{
   const session = createSession(lang);
   if(req.body?.noThreat) setThreatScoring(session, false);
   sessions.set(sid, {session, updatedAt:Date.now()});
-  res.json({sid, snapshot:snapshot(session), meta:meta(lang)});
+  // The AI-report thresholds travel with the session so the page can say what a session still
+  // needs before the learner spends a click, and so raising a threshold in the environment
+  // moves the message and the enforcement together.
+  res.json({sid, snapshot:snapshot(session), meta:meta(lang), aiEligibility:aiEligibilityConfig()});
 });
 
 // Learning modes are switchable mid-session, so scoring has to be switchable mid-session too.

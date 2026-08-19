@@ -145,6 +145,18 @@ the evidence pack are identical.
 | `HOMEOSTASIS_AI_RATE_LIMIT_MAX` | `6` | Requests per IP per 30 minutes |
 | `HOMEOSTASIS_AI_QUOTA_PATH` | `backend/logs/homeostasis-ai-quota.json` | Where the daily counter persists. Point it somewhere durable, or quotas reset on every redeploy. |
 | `HOMEOSTASIS_AI_QUOTA_SALT` | `homeostasis-ai-quota-v1` | Visitor IPs are stored only as HMACs of this salt. Set a long random value in production; changing it resets everyone's quota. |
+| `HOMEOSTASIS_AI_ELIGIBILITY` | `on` | `off` disables the session-quality gate below |
+| `HOMEOSTASIS_AI_MIN_ACTIONS` | `3` | Distinct learner actions required. A loaded scenario is one action, however many parameters it moved. |
+| `HOMEOSTASIS_AI_MIN_WATCHED_SECONDS` | `90` | Real seconds of observation required, summed across the time lenses |
+| `HOMEOSTASIS_AI_MIN_QUIET_GAP_SECONDS` | `20` | Real seconds the learner must leave the system alone at least once |
+
+**The session-quality gate.** A session with nothing in it produces a report with nothing in it,
+so `backend/aiEligibility.js` refuses one before the model is called and before the daily quota is
+touched — the request costs no tokens and no allowance. The three measures are all in REAL seconds,
+never simulated ones: the time lens compresses simulated time by up to ~11500x, so a "three-day"
+session can be eight seconds of watching. A missing diagnostic counts as unknown and can never
+block, and the thresholds travel to the browser at session start, so the page tells the learner
+what their session still needs instead of failing them after a two-minute wait.
 
 The quota is keyed on a salted hash of the IP, not the raw address — the counter file holds no
 plaintext addresses even when analytics are off.
@@ -332,6 +344,16 @@ curl -s http://127.0.0.1:3002/api/health
 | `HOMEOSTASIS_AI_RATE_LIMIT_MAX` | `6` | 每 IP 每 30 分钟请求数 |
 | `HOMEOSTASIS_AI_QUOTA_PATH` | `backend/logs/homeostasis-ai-quota.json` | 每日计数的持久化位置。请指向稳定路径，否则每次重新部署配额都会清零 |
 | `HOMEOSTASIS_AI_QUOTA_SALT` | `homeostasis-ai-quota-v1` | 访客 IP 只以该盐的 HMAC 形式存储。生产环境请设为足够长的随机值；更换会重置所有人的配额 |
+| `HOMEOSTASIS_AI_ELIGIBILITY` | `on` | 设为 `off` 关闭下面的会话质量门槛 |
+| `HOMEOSTASIS_AI_MIN_ACTIONS` | `3` | 所需的独立操作次数。加载一个疾病场景算一次，无论它改了多少个参数 |
+| `HOMEOSTASIS_AI_MIN_WATCHED_SECONDS` | `90` | 所需的真实观察秒数，跨各时间镜头求和 |
+| `HOMEOSTASIS_AI_MIN_QUIET_GAP_SECONDS` | `20` | 全程至少要有一段不操作的真实秒数 |
+
+**会话质量门槛。** 空会话只能生成空报告，因此 `backend/aiEligibility.js` 会在调用模型之前、
+也在扣减每日配额之前直接拒绝——这样的请求既不花 token，也不消耗次数。三项指标一律以**真实秒**
+计量，而非模拟秒：时间镜头最高可把模拟时间压缩约 11500 倍，一次"三天"的会话可能只看了八秒。
+缺失的诊断字段一律按"未知"处理、永远不会拦人；阈值随会话下发到浏览器，页面会直接告诉学习者
+还差什么，而不是让人等两分钟才被拒绝。
 
 配额以 IP 的加盐哈希为键，而非原始地址——即使在关闭学习记录的情况下，计数文件里也不含明文 IP。
 

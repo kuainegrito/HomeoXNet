@@ -70,16 +70,32 @@ async function run(){
   await waitForServer();
   const start=await post('/api/session/start',{lang:'en'});
   assert.equal(start.status,200);
-  const {sid}=await start.json();
+  const startPayload=await start.json();
+  const {sid}=startPayload;
+  // The eligibility thresholds travel with the session so the page can explain the gate.
+  assert.equal(startPayload.aiEligibility.enforced,true);
+  assert.equal(startPayload.aiEligibility.thresholds.minActions,3);
+
+  const action=(actionId,elapsed,valueBefore,valueAfter)=>({
+    actionId,elapsed,endElapsed:elapsed,normalizedElapsed:elapsed/5,
+    parameterId:'map',parameterName:'Mean arterial pressure',unit:'mmHg',
+    valueBefore,valueAfter,absoluteChange:valueAfter-valueBefore,
+    direction:valueAfter>valueBefore?'increase':'decrease',source:'slider',interventionType:'parameter adjustment'
+  });
   const report={
     language:'en',
-    metadata:{normalizedSimulationDurationSeconds:10,totalInterventions:1,minimumStabilityScore:80,finalStabilityScore:85,stabilityReachedZero:false},
+    metadata:{normalizedSimulationDurationSeconds:10,totalInterventions:3,minimumStabilityScore:80,finalStabilityScore:85,stabilityReachedZero:false},
     definitions:[{key:'map',label:'Mean arterial pressure',unit:'mmHg',base:93,warn:[65,145],danger:[45,180]}],
     scenariosUsed:[],
-    interventions:[{normalizedElapsed:2,parameterId:'map',parameterName:'Mean arterial pressure',unit:'mmHg',valueBefore:70,valueAfter:80,absoluteChange:10,direction:'increase',source:'slider',interventionType:'parameter adjustment'}],
-    parameterStatistics:[{key:'map',label:'Mean arterial pressure',unit:'mmHg',initial:70,final:80,minimum:70,maximum:80,greatestNormalizedDeviation:.25,greatestDeviationElapsed:0}],
-    samples:[{normalizedElapsed:0,stabilityScore:80,status:'unstable',parameters:{map:{actual:70,normalized:.75}}},{normalizedElapsed:10,stabilityScore:85,status:'running',parameters:{map:{actual:80,normalized:.86}}}]
+    // Three actions, four real minutes of watching, minute-long quiet stretches: a session the
+    // eligibility gate lets through.
+    interventions:[action('slider-1',0,70,80),action('slider-2',60,80,88),action('slider-3',150,88,84)],
+    timeScale:{lensSeconds:{seconds:260},peakCompression:1,manualLensSwitches:0,autoEverOn:true},
+    parameterStatistics:[{key:'map',label:'Mean arterial pressure',unit:'mmHg',initial:70,final:84,minimum:70,maximum:88,greatestNormalizedDeviation:.25,greatestDeviationElapsed:0}],
+    samples:[{elapsed:0,normalizedElapsed:0,stabilityScore:80,status:'unstable',parameters:{map:{actual:70,normalized:.75}}},{elapsed:240,normalizedElapsed:10,stabilityScore:85,status:'running',parameters:{map:{actual:84,normalized:.9}}}]
   };
+  // Same session, one hurried action: nothing a model could reason about.
+  const thinReport={...report,metadata:{...report.metadata,totalInterventions:1},interventions:[action('slider-1',0,70,80)],timeScale:{lensSeconds:{seconds:6}},samples:[{elapsed:6,normalizedElapsed:6,stabilityScore:85,status:'running',parameters:{map:{actual:80,normalized:.86}}}]};
   const response=await post('/api/ai-analysis',{sid,report});
   assert.equal(response.status,200);
   const payload=await response.json();
@@ -92,11 +108,25 @@ async function run(){
   assert.equal(providerRequest.model,'deepseek-v4-pro');
   assert.equal(providerRequest.stream,false);
   assert.equal(providerRequest.messages[0].role,'system');
+
+  // --- A session too thin to analyse is refused before it costs anything --------------------
+  const providerBeforeGate=providerRequest;
+  const gated=await post('/api/ai-analysis',{sid,report:thinReport});
+  assert.equal(gated.status,403);
+  const gatedPayload=await gated.json();
+  assert.equal(gatedPayload.error,'ai_session_too_simple');
+  assert.deepEqual(gatedPayload.eligibility.reasons,['too_few_actions','too_little_observation','no_observation_after_actions']);
+  assert.equal(gatedPayload.eligibility.metrics.actions,1);
+  assert.equal(providerRequest,providerBeforeGate,'a refused session must never reach the model');
+  assert.equal(gatedPayload.quota.used,1,'a refused session must not spend a daily AI report');
+
   let hiddenPayload;
   for(let click=1;click<=15;click++) hiddenPayload=await (await post('/api/ai-quota/hidden-click',{})).json();
   assert.equal(hiddenPayload.granted,true);
   assert.equal(hiddenPayload.quota.exempt,true);
-  const exemptResponse=await post('/api/ai-analysis',{sid,report});
+  // The hidden exemption is how the feature gets demonstrated, and a demonstration is exactly
+  // the two-click session the gate refuses. It bypasses the gate as well as the quota.
+  const exemptResponse=await post('/api/ai-analysis',{sid,report:thinReport});
   assert.equal(exemptResponse.status,200);
   const exemptPayload=await exemptResponse.json();
   assert.equal(exemptPayload.quota.used,1,'an exempt AI report must not consume another daily use');

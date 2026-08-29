@@ -5030,10 +5030,41 @@ function clearParamSelection(forceNetwork=true){
   $('detailTitle').textContent=TEXT.detailTitle;
   $('detailText').textContent=TEXT.detailText;
   renderParamInfo();
+  stabilizeReservedBlocks();
   if(latest){
     renderConditions(latest);
     renderNetwork(latest, forceNetwork);
   }
+}
+
+/* ---------------------------------------------------------------------------
+   版面稳定
+   右栏里有几块文字长短不一：说明标题与说明正文随选中的参数（以及读数、
+   预警前缀）变长变短，时间窗口一行随刻度切换变长变短，引导列表随系统切换
+   变多变少。它们一变高矮，下面的「临床病情评估」「参数说明」就被顶上顶下，
+   正在读的人会跟丢位置。
+   做法：记住每块出现过的最大高度，作为 min-height 预留下来——只增不减，
+   于是读的过程中版面不再跳。栏宽变了（拖动分栏、改窗口、转屏）就清零重量，
+   因为换行位置不同、最高的那一版也可能换人。
+--------------------------------------------------------------------------- */
+const RESERVED_BLOCK_IDS=['detailTitle','detailText','lensFocus','guidedList'];
+const reservedBlockState=new WeakMap();
+function reserveBlockHeight(el){
+  if(!el) return;
+  const width=el.clientWidth;
+  if(!width) return;                       // 面板收起 / 尚未排版时不量，免得记下一个 0
+  let st=reservedBlockState.get(el);
+  if(!st || st.width!==width){
+    st={width, max:0};
+    reservedBlockState.set(el, st);
+    el.style.minHeight='';
+  }
+  // 已经设过 min-height 时量到的就是预留值本身，只有内容更高才会超过它
+  const h=Math.ceil(el.getBoundingClientRect().height);
+  if(h>st.max){ st.max=h; el.style.minHeight=`${h}px`; }
+}
+function stabilizeReservedBlocks(){
+  RESERVED_BLOCK_IDS.forEach(id=>reserveBlockHeight($(id)));
 }
 function renderTimeConsole(){
   if(!timeMeta) return;
@@ -5097,6 +5128,8 @@ function renderTimeConsole(){
   document.body.classList.toggle('high-speed', isHighSpeed());
   document.body.classList.toggle('time-scale-locked', replayActive);
   $('timeConsole')?.setAttribute('data-locked-note', replayActive ? TEXT.timeScaleLockedNote : '');
+  // 每帧都走这里，顺带把右栏几块文字的预留高度维护上（栏宽变了也会在这里重量）
+  stabilizeReservedBlocks();
 }
 function adjustSpeed(delta){
   const steps=timeMeta?.speedSteps?.length || 6;
@@ -5299,6 +5332,7 @@ function renderGuidedPanel(){
   }).join('');
   list.querySelectorAll('[data-apply]').forEach(button =>
     button.addEventListener('click', () => startLesson(button.dataset.apply)));
+  stabilizeReservedBlocks();          // 换系统后条目多少不同，下面的说明栏别跟着上下跑
 }
 // Starting a lesson cuts the whole app down to that one loop: the network to its nodes, the
 // console to its controls, the clock to the scale its slowest limb lives on. Then it applies the
@@ -5420,6 +5454,7 @@ function selectParam(k, forceNetwork=true, pulse=true){
   const lead = interpretation ? `${interpretation} ` : '';
   $('detailText').textContent=`${lead}${TEXT.relatedIn}${sep}${incoming}${stop}${TEXT.relatedOut}${sep}${outgoing}${stop}${TEXT.knob}${sep}${p.control>0?'+':''}${Math.round(p.control)}${stop}`;
   renderParamInfo();
+  stabilizeReservedBlocks();          // 点一下就立即定高，不必等下一帧
   refreshParameterExplanation(k);
   if(latest) renderConditions(latest);
   if(latest) renderNetwork(latest, forceNetwork);

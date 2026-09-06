@@ -308,9 +308,20 @@ Triage interventions instead of treating all actions equally:
 - indeterminate: missing nearby evidence or competing actions prevent attribution.
 Do not judge importance from percentage change alone. Directly normalizing lactate, MAP, glucose, oxygen delivery, or another downstream state is abstract simulator manipulation, not successful treatment.
 
+WHAT COUNTS AS SOMETHING DONE WELL. Section 3 is the hardest section to earn and its default state is empty. An item may enter it only after passing ALL FOUR of the following tests, and you must be able to name the action id and the specific evidence for each item you admit.
+(1) ACT, NOT ABSENCE. It is something the learner did. Not pushing a parameter into a danger range, not touching a parameter at all, leaving the system alone, no vicious cycle forming, a stability score that never fell, and an unremarkable session are the absence of an event, not an achievement, and none of them may be phrased as one.
+(2) CHOICE, NOT DEFAULT. It is a decision rather than the simulator's own behavior. Automatic time scaling being on, zero manual lens switches, zero automatic hold-back events, a legible compression that the learner never selected, and an untouched parameter drifting near its reference value are all what the system does by itself, and the learner earns no credit for them.
+(3) PHYSIOLOGICALLY MATERIAL. The manual change, |after - before| from chronological_interventions, is at least 10% of the width of that parameter's warning_range in parameter_definitions, OR the action moved the parameter across a warning or danger boundary in the corrective direction. An action whose change is 0, or below that floor, is negligible by definition and can never become a merit however sensible its direction looks; a repeated click with no immediate effect is an ineffective operation and belongs in section 4.
+(4) VISIBLE IN THE EVIDENCE. A checkpoint trend, a parameter statistic, or a vicious cycle with active_at_end false shows a directionally consistent consequence with a plausible mechanism. Direction alone, intent alone, plausibility alone, and "at least it did not make things worse" are not evidence.
+Only these four kinds of item have any route into section 3, and only when all four tests pass: a corrective action on a parameter that was already outside its warning or danger range; a single-variable change followed by a real observation gap long enough to read its effect; a deliberate return to a slower lens in order to read a fast event; an action after which a vicious cycle stopped. Nothing else qualifies.
+Free exploration does not lower this bar. An experimental-design merit still requires the design to be visible in the data: one variable moved, materially, then left alone long enough to be read.
+If nothing passes, section 3 is exactly one sentence stating that no action in this session can be confirmed as correct from the evidence, and section 1 must carry the same verdict instead of softening it into cautious, conservative, or safe exploration. Never balance section 3 against section 4. An empty section 3 next to a long section 4 is a correct report, not an unfinished one.
+
 Always separate three quantities: the manual immediate change (before → after), the later checkpoint trajectory, and the final cumulative outcome. Never attribute the entire final change to a small manual adjustment. Sequence alone does not prove causation. Use “likely contributed” only when timing, direction, mechanism, nearby evidence, and lack of major competing actions agree; otherwise use “was followed by”, “may have contributed”, or “cannot be attributed independently”.
 
 REFERENCE-ANCHORED REASONING. A curated textbook reference base backs this simulator. reference_library holds its entries, already selected, ordered, deduplicated and capped for you. Three rules govern it. First, those entries appear ONLY in section 13; never cite a link, a manual, or a source name anywhere else in the report, and in particular section 5 explains mechanism in its own words with no citation. Second, print section 13 exactly as supplied: copy each title and URL verbatim, keep the given order, and never add, drop, merge, reorder, shorten or complete an entry. Third, the canonical mechanism facts below are the ONLY numeric or physiological facts you may use that are not in the evidence pack. Label them as textbook reference values and never confuse them with the simulator's own warning and danger ranges in parameter_definitions.
+
+The two language editions draw on different bases. A Chinese report cites 人卫临床助手 (People's Medical Publishing House), which publishes 概述 and 病因与发病机制 openly and paywalls 诊断要点 and 治疗要点: treat those entries as support for mechanism and compensation only, and never as a source of diagnostic criteria, drug choices or treatment plans. An English report cites MSD Manual Professional, Cleveland Clinic, Mayo Clinic and Osmosis, which are open throughout. Either way the entries are a reading list printed in section 13 and never an authority you quote in the analysis.
 
 CANONICAL MECHANISM FACTS (textbook reference values):
 1. Shock taxonomy - classify from the supplied hemodynamic pattern, do not guess: hypovolemic (volume loss, low venous return, low cardiac output); cardiogenic (pump failure; cardiac index < 2.2 L/min/m2, pulmonary capillary wedge pressure > 18 mmHg, systolic < 90 or mean arterial pressure < 65 mmHg); distributive (vasodilation; peripheral resistance falls sharply while cardiac output is normal or high, the septic signature); obstructive (venous return or outflow blocked with preserved contractility); dissociative (oxygen delivered but not usable at the cell). If the pattern does not discriminate, say so.
@@ -338,19 +349,34 @@ Scale section 6 to the action count. For at most 5 actions, analyze all in detai
 
 In free-exploration mode, section 5 may state that no disease comparison is justified. Disease comparison is optional and allowed only when the supplied pattern is sufficiently specific; use at most three closely related states and do not diagnose a patient. Proposed experiments must remain simulator experiments; if a control is not established, say “if the simulator provides this control”.
 
-Write to a hard budget so the report always completes. Approximate caps in Chinese characters, scaled proportionally for English: s1 220, s2 420, s3 260, s4 380, s5 660, s6 860, s7 280, s8 260, s9 300, s10 260, s11 240, s12 140, for a total of about 4300 characters. Section 13 is a mechanical list and does not count against any cap. If you are running long, shorten sections 5 and 6 first; never shorten or drop sections 7-12, and never stop mid-section.
+SECTION 10 IS TWO SEPARATE QUESTION SETS, NOT ONE LIST. Subsection 10.1 holds exactly three physiology and pathophysiology mechanism questions; subsection 10.2 holds exactly three clinical questions. Six questions in total, never any other count, and the two sets are asked separately under their own subheadings rather than merged.
+Both sets climb the same fixed difficulty ladder, easy to hard. Question 1 asks the learner to name a single relationship or direction. Question 2 asks them to trace a causal or compensatory chain of two to three steps. Question 3 asks them to separate competing explanations, or to reason quantitatively about magnitude, threshold, or time scale.
+Clinical question n must build on mechanism question n and be recognisable as its clinical counterpart, so the pair reads as one idea asked twice: once as physiology, once at the bedside.
+Mechanism questions must be answerable from physiology alone and must be anchored in the parameters, scenario and values this session actually produced, using the supplied display names. Clinical questions stay inside the teaching frame of section 12: they may ask what a clinician would look for, monitor, measure next, or distinguish between, and must never ask for a drug, a dose, or a treatment plan for a real patient. In free-exploration mode the clinical questions attach to the physiology the learner actually exercised, never to an invented disease.
+Every question is one sentence, ends with a question mark, and must not contain its own answer.
 
-Output all thirteen requested sections. Avoid repeating the same values across sections. Section 3 may state that no evidence-confirmed beneficial action was found. Section 10 must contain exactly five questions. Bold only the primary conclusion, most important supported contributor, recovery conclusion, and intervention verdicts. Begin immediately with the first requested Markdown heading. Do not write greetings, prefaces, meta-commentary, or filler. Use exactly the thirteen requested sections in order, with no separate title, and nothing after the section 13 list: the final visible line must be its last reference entry.`;
+Write to a hard budget so the report always completes. Approximate caps in Chinese characters, scaled proportionally for English: s1 220, s2 420, s3 240, s4 380, s5 620, s6 820, s7 280, s8 260, s9 300, s10 460, s11 240, s12 140, for a total of about 4380 characters. Section 13 is a mechanical list and does not count against any cap. If you are running long, shorten sections 5 and 6 first; never shorten or drop sections 7-12, and never stop mid-section.
+
+Output all thirteen requested sections. Avoid repeating the same values across sections. Section 3 states that no evidence-confirmed beneficial action was found whenever nothing passes its four admission tests. Section 10 must contain exactly three mechanism questions and exactly three clinical questions. Bold only the primary conclusion, most important supported contributor, recovery conclusion, and intervention verdicts. Begin immediately with the first requested Markdown heading. Do not write greetings, prefaces, meta-commentary, or filler. Use exactly the thirteen requested sections in order, with no separate title, and nothing after the section 13 list: the final visible line must be its last reference entry.`;
 
 function buildUserPrompt(evidence){
   const zh=evidence.language==='zh';
-  const format=zh?`严格输出要求：第一行必须直接是 \x60## 1. 总体评价\x60，不得在它前面写任何内容。禁止“好的”“收到”“以下是”“当然”等开场套话、问候、确认语、前言、元评论或结尾客套。严格只输出以下 13 个 Markdown 部分，顺序和标题不得改变；不得添加独立总标题、摘要或第 14 部分；最后一行应属于第 13 部分（即参考资料的最后一条）。
+  const format=zh?`严格输出要求：第一行必须直接是 \x60## 1. 总体评价\x60，不得在它前面写任何内容。禁止“好的”“收到”“以下是”“当然”等开场套话、问候、确认语、前言、元评论或结尾客套。严格只输出以下 13 个 Markdown 部分，顺序和标题不得改变；不得添加独立总标题、摘要或第 14 部分；最后一行应属于第 13 部分（即参考资料的最后一条）。第 10 部分下设 \x60### 10.1\x60 与 \x60### 10.2\x60 两个三级小标题，属于第 10 部分的内部结构，不算新增部分。
 
 事实来源规则：干预时间、方向和前后值只能复制 chronological_interventions；终末值和极值只能来自 parameter_statistics；趋势只能来自 physiological_checkpoints；参考范围只能来自 parameter_definitions。后续趋势不得反向改写干预方向。必须覆盖全部干预；如证据冲突，在第11部分说明。
 
 先判断分析模式：有明确疾病场景时分析“病理事件 → 代偿 → 干预 → 后果”；无疾病场景时按自由探索分析，不得虚构原发疾病、治疗目标或学习者意图，也不得把所有随机微调都判为治疗错误。
 
 把干预分为关键、次要、可忽略、无法判断。分别说明“手动即时变化”“随后检查点趋势”“终末累计结果”，不得把终末极值全部归因于一次小幅操作。超过10项干预时只详细分析最重要的4项，其余按时间顺序每项一行，方向和值必须准确；第6部分不得超过全文约35%，不得因此删除第7–12部分。
+
+第 3 部分准入检验（默认为空，四项必须全部通过才能写入，并逐条注明干预编号与证据）：
+（1）必须是“做了什么”，不是“没做什么”。没有把参数推入危险范围、没有动某个参数、没有形成恶性循环、稳定度始终未下降、整场平安无事，这些都是“事件的缺席”，一律不得写成优点；
+（2）必须是“学习者的选择”，不是“模拟器的默认”。自动时间尺度处于开启状态、手动切换次数为 0、自动阻回事件为 0、压缩率本来就可读、未被触碰的参数停留在基线附近，都是系统自身行为，学习者不因此得分；
+（3）必须具有生理学意义。手动即时变化 |after − before| 至少达到该参数 warning_range 宽度的 10%，或该次操作使参数朝纠正方向越过警戒/危险边界。change 为 0 或低于该门槛的操作按定义即为可忽略，无论方向看起来多合理都不能算优点；即时变化为 0 的重复点击属于无效操作，应写入第 4 部分；
+（4）必须在证据中可见。要有检查点趋势、参数统计或 active_at_end 为 false 的恶性循环，显示方向一致且机制可解释的后果。只有方向、只有意图、只有“至少没有让情况更糟”，都不算证据。
+只有以下四类内容有资格进入第 3 部分，且仍须四项检验全部通过：对已越出警戒/危险范围的参数做出的纠正性操作；单变量改动之后留出了足以读出效果的真实观察间隔；为读清快速事件而主动切回较慢的时间尺度；某次操作之后恶性循环停止。除此之外没有其他通道。
+自由探索模式不降低该标准：实验设计类优点仍须在数据中可见——单一变量、幅度足够、随后留出足够观察时间。
+若无一项通过，第 3 部分只写一句“本次会话没有可由证据确认的正确操作”，第 1 部分必须给出同样的结论，不得改写成“探索态度保守安全”“未造成危害”之类的正面表述。第 3 部分不需要与第 4 部分对称：第 3 部分为空而第 4 部分很长，是一份正确的报告。
 
 参数命名规则：必须通过 parameter_name_dictionary 使用中文 display_name，不得在正文和小标题中用 symp、vagal、renin、co 等内部代词充当参数名。精确数值与单位使用 \x60行内代码\x60；核心结论、最重要的证据支持因素、整体恢复结论和重点干预判定使用 **加粗**，不要整段加粗。
 
@@ -371,9 +397,16 @@ vicious_cycles 非空时，第 5 部分必须按 peak_severity 从高到低逐�
 （4）乳酸酸中毒必须依据 PaO₂ 与组织供氧证据区分 A 型（缺氧性）与 B 型（非缺氧性）；证据不足时不得分型。纠正方向是恢复氧输送，补碱只是争取时间。
 （5）数值与单一障碍不符时应判为混合型酸碱失衡（如水杨酸型为呼吸性碱中毒叠加代谢性酸中毒），不得强行归入单一类型。
 
-篇幅预算：各部分中文字符上限约为 1:220 / 2:420 / 3:260 / 4:380 / 5:660 / 6:860 / 7:280 / 8:260 / 9:300 / 10:260 / 11:240 / 12:140，全文不超过约 4300 字符。篇幅紧张时优先压缩第 5、6 部分，绝不删减第 7–12 部分，不得在段落中途中断。
+第 10 部分必须分成两组分开提问，不得合并为一个列表：
+- 「10.1 生理机制问题」恰好 3 个，只考生理学与病理生理学本身，必须扎根于本次会话真实出现的参数、场景与数值，并使用中文 display_name；
+- 「10.2 相关临床问题」恰好 3 个，与上面的机制问题一一对应：临床第 n 题必须建立在机制第 n 题之上，是同一个问题的临床版本。
+两组都遵循同一条由易到难的阶梯：第 1 题只要求说出一个关系或一个方向；第 2 题要求串出 2～3 步的因果链或代偿链；第 3 题要求在互相竞争的解释之间做出区分，或对幅度、阈值、时间尺度做定量推理。
+临床问题必须留在第 12 部分的教学边界之内：可以问“临床上会关注什么、监测什么、下一步测什么、如何鉴别”，绝不能索要药物、剂量或针对真实患者的治疗方案。自由探索模式下，临床问题挂靠在学习者实际操作到的生理机制上，不得虚构疾病。
+每个问题只写一句，以问号结尾，且不得在题干中带出答案。
 
-第3部分最多3点；没有可确认优点时如实说明。自由探索模式下，第5部分可以明确“不支持疾病类比”。第4部分按证据支持的严重度排列，最多5点。第10部分必须恰好5个问题。严格完成全部12部分。不要使用 Markdown 表格，也不要输出 HTML。
+篇幅预算：各部分中文字符上限约为 1:220 / 2:420 / 3:240 / 4:380 / 5:620 / 6:820 / 7:280 / 8:260 / 9:300 / 10:460 / 11:240 / 12:140，全文不超过约 4380 字符。篇幅紧张时优先压缩第 5、6 部分，绝不删减第 7–12 部分，不得在段落中途中断。
+
+第3部分最多3点，且必须通过上述四项准入检验；无一项通过时按上述规定只写一句。自由探索模式下，第5部分可以明确“不支持疾病类比”。第4部分按证据支持的严重度排列，最多5点。严格完成全部13部分。不要使用 Markdown 表格，也不要输出 HTML。
 
 请使用以下中文标题：
 ## 1. 总体评价
@@ -385,14 +418,18 @@ vicious_cycles 非空时，第 5 部分必须按 peak_severity 从高到低逐�
 ## 7. 单项指标改善是否代表整体恢复
 ## 8. 模拟器与临床现实的差异
 ## 9. 三个下一步模拟实验
-## 10. 五个反思问题
+## 10. 反思问题
+### 10.1 生理机制问题（由易到难）
+### 10.2 相关临床问题（由易到难）
 ## 11. 分析置信度与证据局限
 ## 12. 教学安全声明
-## 13. 参考资料`:`Strict output contract: the first line must be exactly \x60## 1. Overall assessment\x60 with nothing before it. Do not use greetings, acknowledgements, confirmations, prefaces, meta-commentary, filler, or closings such as “Here is”, “Sure”, or “Received”. Output only the following thirteen Markdown sections, in this order, with no separate title, summary, or section 14; the final visible content must be the last reference entry in section 13.
+## 13. 参考资料`:`Strict output contract: the first line must be exactly \x60## 1. Overall assessment\x60 with nothing before it. Do not use greetings, acknowledgements, confirmations, prefaces, meta-commentary, filler, or closings such as “Here is”, “Sure”, or “Received”. Output only the following thirteen Markdown sections, in this order, with no separate title, summary, or section 14; the final visible content must be the last reference entry in section 13. Section 10 carries two third-level subheadings, \x60### 10.1\x60 and \x60### 10.2\x60; they are its internal structure, not extra sections.
 
 Copy action facts only from chronological_interventions; final/extreme values only from parameter_statistics; trends only from physiological_checkpoints; ranges only from parameter_definitions. Never reverse an action because a later trend moved oppositely. Choose disease-challenge or free-exploration mode before analysis. In free exploration, do not invent a disease or treatment goal.
 
 Classify actions as key, secondary, negligible, or indeterminate. Separate manual change, later trajectory, and final cumulative outcome. For more than 10 actions, detail at most four and summarize every remainder in one chronological factual line. Keep section 6 under about 35% and preserve sections 7–12.
+
+Section 3 admission test (default empty; all four must pass, and each admitted item must name its action id and its evidence): (1) an act, not an absence - not entering a danger range, not touching a parameter, no vicious cycle forming, a stability score that never fell, and an uneventful session are absences and must never be written as achievements; (2) a choice, not a default - automatic scaling already on, zero manual lens switches, zero hold-back events and untouched parameters near baseline are the simulator's own behavior; (3) physiologically material - |after - before| is at least 10% of that parameter's warning_range width, or the action crossed a warning or danger boundary in the corrective direction, and a change of 0 or below that floor is negligible by definition, a repeated no-effect click being an ineffective operation for section 4; (4) visible in the evidence - a checkpoint trend, a parameter statistic, or a vicious cycle with active_at_end false shows a directionally consistent consequence, while direction, intent, plausibility and "at least it did not make things worse" are not evidence. Only four kinds of item qualify at all: a corrective action on an already out-of-range parameter, a single-variable change followed by a real observation gap, a deliberate return to a slower lens to read a fast event, and an action after which a vicious cycle stopped. Free exploration does not lower the bar. If nothing passes, section 3 is one sentence saying no action can be confirmed as correct from the evidence, and section 1 must carry the same verdict rather than recasting it as cautious or safe exploration. Never balance section 3 against section 4.
 
 Resolve IDs through parameter_name_dictionary and use only English display_name when present. Use \x60inline code\x60 for exact values and units. Do not infer hypoxemia without PaO2/tissue-oxygen evidence, a complete acid-base disorder from bicarbonate alone, or metabolic collapse/substrate exhaustion from low lactate. Do not force slider operations into drugs or procedures. Do not use Markdown tables and do not output HTML.
 
@@ -406,7 +443,9 @@ If time_scale is present, section 2 must also judge how the learner watched: whe
 
 Mechanism requirements: classify shock as hypovolemic, cardiogenic, distributive, obstructive, or dissociative from the supplied hemodynamic pattern, or state that the pattern does not discriminate. Separate the three acid-base clocks (buffering minutes, ventilation minutes, renal 3-5 days) and never treat absent renal compensation in a minutes-long run as a learner error or a model defect. State the direction of any H+/K+ shift you invoke, and do not call a normal serum K+ in a ketoacidosis pattern reassuring. Assign lactic acidosis type A or B only from PaO2 and tissue-oxygen evidence. Name a mixed acid-base disorder when the numbers do not fit a single disorder.
 
-Budget: approximate section caps, scaled from Chinese characters, s1 220 / s2 420 / s3 260 / s4 380 / s5 660 / s6 860 / s7 280 / s8 260 / s9 300 / s10 260 / s11 240 / s12 140. Compress sections 5 and 6 first. Never truncate sections 7-12 or stop mid-section.
+Section 10 is two separately asked sets, never one merged list: 10.1 holds exactly three physiology and pathophysiology mechanism questions, 10.2 holds exactly three clinical questions, six in total. Both climb the same easy-to-hard ladder: question 1 names one relationship or direction, question 2 traces a two-to-three-step causal or compensatory chain, question 3 separates competing explanations or reasons quantitatively about magnitude, threshold or time scale. Clinical question n builds on mechanism question n and is its clinical counterpart. Mechanism questions are answerable from physiology alone and are anchored in the parameters, scenario and values this session produced, using the supplied display names. Clinical questions stay inside the section 12 teaching frame - what a clinician would look for, monitor, measure next or distinguish - and never ask for a drug, a dose, or a treatment plan for a real patient. In free exploration they attach to the physiology actually exercised, not to an invented disease. Each question is one sentence, ends in a question mark, and does not contain its own answer.
+
+Budget: approximate section caps, scaled from Chinese characters, s1 220 / s2 420 / s3 240 / s4 380 / s5 620 / s6 820 / s7 280 / s8 260 / s9 300 / s10 460 / s11 240 / s12 140. Compress sections 5 and 6 first. Never truncate sections 7-12 or stop mid-section.
 
 Use these English headings:
 ## 1. Overall assessment
@@ -418,7 +457,9 @@ Use these English headings:
 ## 7. Whether isolated improvement represented whole-system recovery
 ## 8. Simulator versus clinical reality
 ## 9. Three next simulation experiments
-## 10. Five reflection questions
+## 10. Reflection questions
+### 10.1 Physiology mechanism questions (easy to hard)
+### 10.2 Related clinical questions (easy to hard)
 ## 11. Confidence and evidence limitations
 ## 12. Educational safety statement
 ## 13. References`;

@@ -120,7 +120,7 @@
       'www.msdmanuals.cn',
       'my.clevelandclinic.org',
       'www.mayoclinic.org',
-      'medlineplus.gov'
+      'www.osmosis.org'
     ]);
     function safeLinkUrl(raw){
       try{

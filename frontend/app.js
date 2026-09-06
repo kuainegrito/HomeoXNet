@@ -799,56 +799,70 @@ const PARAM_CLINICAL = {
   }
 }[lang];
 
+// Mirror of backend/referenceLinks.js REFERENCE_LINKS. Rebuilt 2026-09-06: every entry is now
+// language-aware, Chinese resolves to 人卫临床助手 (PMPH) wherever it has an entry, and English
+// resolves to MSD Manual Professional / Cleveland Clinic / Mayo Clinic / Osmosis. MedlinePlus
+// is gone and the MSD paths that moved into `nephrology/` are corrected. Keep this table and
+// backend/referenceLinks.js in step until the frontend reads them from meta().
+const PMPH_LIB='https://test.pmphai.com/jeesitede/';
+const pmphLink=(label,lib,id)=>({label:`人卫临床助手：${label}`,url:`${PMPH_LIB}app${lib}/toPcDetail?sessionId=&knowledgeLibPrefix=${lib}&id=${id}`});
+const ccLink=(label,path)=>({label:`Cleveland Clinic: ${label}`,url:`https://my.clevelandclinic.org/health/${path}`});
+const mayoLink=(label,path)=>({label:`Mayo Clinic: ${label}`,url:`https://www.mayoclinic.org/${path}`});
+const osmosisLink=(label,path)=>({label:`Osmosis: ${label}`,url:`https://www.osmosis.org/${path}`});
+const merckLink=(label,path)=>({label:`MSD Manual Professional: ${label}`,url:`https://www.merckmanuals.com/professional/${path}`});
+const cnRef=(zhLabel,lib,id,en)=>({zh:pmphLink(zhLabel,lib,id),en});
+
 const TRUSTED_PARAM_LINKS = {
-  hr:{label:'Mayo Clinic: Heart rate',url:'https://www.mayoclinic.org/healthy-lifestyle/fitness/expert-answers/heart-rate/faq-20057979'},
-  hrTachy:{label:'Mayo Clinic: 心动过速',url:'https://www.mayoclinic.org/zh-hans/diseases-conditions/tachycardia/diagnosis-treatment/drc-20355133'},
-  hrBrady:{label:'Mayo Clinic: 心动过缓',url:'https://www.mayoclinic.org/zh-hans/diseases-conditions/bradycardia/symptoms-causes/syc-20355474'},
-  bp:{label:'Cleveland Clinic: Hypertension',url:'https://my.clevelandclinic.org/health/diseases/4314-hypertension-high-blood-pressure'},
-  bpHigh:{label:'Mayo Clinic: 高血压',url:'https://www.mayoclinic.org/zh-hans/diseases-conditions/high-blood-pressure/symptoms-causes/syc-20373410'},
-  bpLow:{label:'Mayo Clinic: 低血压',url:'https://www.mayoclinic.org/zh-hans/diseases-conditions/low-blood-pressure/symptoms-causes/syc-20355465'},
-  gfr:{label:'Cleveland Clinic: GFR',url:'https://my.clevelandclinic.org/health/diagnostics/21624-glomerular-filtration-rate-gfr'},
-  abg:{label:'MedlinePlus: Arterial blood gas',url:'https://medlineplus.gov/lab-tests/arterial-blood-gas-abg-test/'},
-  spo2:{label:'Cleveland Clinic: Pulse oximetry',url:'https://my.clevelandclinic.org/health/diagnostics/17824-pulse-oximetry'},
-  metabolicAcidosis:{label:'Cleveland Clinic: Metabolic acidosis',url:'https://my.clevelandclinic.org/health/diseases/24492-metabolic-acidosis'},
-  lacticAcidosis:{label:'Cleveland Clinic: Lactic acidosis',url:'https://my.clevelandclinic.org/health/diseases/25066-lactic-acidosis'},
-  acidBaseMsd:{label:'MSD Manual: 酸碱平衡',url:'https://www.msdmanuals.cn/professional/endocrine-and-metabolic-disorders/acid-base-regulation-and-disorders/acid-base-regulation'},
-  electrolytes:{label:'MedlinePlus: Electrolyte panel',url:'https://medlineplus.gov/lab-tests/electrolyte-panel/'},
-  sodium:{label:'MedlinePlus: Sodium blood test',url:'https://medlineplus.gov/lab-tests/sodium-blood-test/'},
-  sodiumWaterMsd:{label:'MSD Manual: 水和钠平衡',url:'https://www.msdmanuals.cn/professional/endocrine-and-metabolic-disorders/fluid-metabolism/water-and-sodium-balance'},
-  potassium:{label:'MedlinePlus: Potassium blood test',url:'https://medlineplus.gov/lab-tests/potassium-blood-test/'},
-  potassiumHighMsd:{label:'MSD Manual: 高钾血症',url:'https://www.msdmanuals.cn/professional/endocrine-and-metabolic-disorders/electrolyte-disorders/hyperkalemia'},
-  potassiumLowMsd:{label:'MSD Manual: 低钾血症',url:'https://www.msdmanuals.cn/professional/endocrine-and-metabolic-disorders/electrolyte-disorders/hypokalemia#%E7%97%85%E5%8E%9F%E5%AD%A6_v8375413_zh'},
-  aldosterone:{label:'MedlinePlus: Aldosterone test',url:'https://medlineplus.gov/lab-tests/aldosterone-test/'},
-  renin:{label:'MedlinePlus: Renin test',url:'https://medlineplus.gov/lab-tests/renin-test/'},
-  raasMsd:{label:'MSD Manual: RAAS 调节血压',url:'https://www.msdmanuals.cn/home/multimedia/image/regulating-blood-pressure-the-renin-angiotensin-aldosterone-system'},
-  osmolality:{label:'MedlinePlus: Osmolality tests',url:'https://medlineplus.gov/lab-tests/osmolality-tests/'},
-  adhMsd:{label:'MSD Manual: 抗利尿激素',url:'https://www.msdmanuals.cn/professional/endocrine-and-metabolic-disorders/electrolyte-disorders/syndrome-of-inappropriate-adh-secretion-siadh'},
-  bloodVolumeMsd:{label:'MSD Manual: 出血与血容量',url:'https://www.msdmanuals.cn/professional/hematology-and-oncology/hemostasis/excessive-bleeding#%E8%AF%8A%E6%96%AD_v971974_zh'},
-  gfrMsd:{label:'MSD Manual: 慢性肾病',url:'https://www.msdmanuals.cn/professional/genitourinary-disorders/chronic-kidney-disease/chronic-kidney-disease'},
-  urinePolyuriaMsd:{label:'MSD Manual: 多尿',url:'https://www.msdmanuals.cn/professional/genitourinary-disorders/symptoms-of-genitourinary-disorders/polyuria#%E7%97%85%E5%9B%A0_v1049455_zh'},
-  urineOliguriaMsd:{label:'MSD Manual: 少尿',url:'https://www.msdmanuals.cn/professional/critical-care-medicine/approach-to-the-critically-ill-patient/oliguria'},
-  ventilationMechanicsMsd:{label:'MSD Manual: 机械通气与呼吸力学',url:'https://www.msdmanuals.cn/professional/critical-care-medicine/respiratory-failure-and-mechanical-ventilation/overview-of-mechanical-ventilation#%E5%91%BC%E5%90%B8%E5%8A%9B%E5%AD%A6_v926939_zh'},
-  hyperventilationMsd:{label:'MSD Manual: 过度通气综合征',url:'https://www.msdmanuals.cn/professional/pulmonary-disorders/symptoms-of-pulmonary-disorders/hyperventilation-syndrome?query=%E6%B0%94%E7%9F%AD'},
-  dyspneaMsd:{label:'MSD Manual: 呼吸困难',url:'https://www.msdmanuals.cn/professional/pulmonary-disorders/symptoms-of-pulmonary-disorders/dyspnea?query=%E6%B0%94%E7%9F%AD'},
-  glucose:{label:'MedlinePlus: Blood glucose test',url:'https://medlineplus.gov/lab-tests/blood-glucose-test/'},
-  diabetes:{label:'MedlinePlus: Diabetes',url:'https://medlineplus.gov/diabetes.html'},
-  diabetesMsd:{label:'MSD Manual: 糖尿病概述',url:'https://www.msdmanuals.cn/professional/endocrine-and-metabolic-disorders/diabetes-mellitus-and-hypoglycemia/overview-of-diabetes-mellitus?query=%E7%B3%96%E5%B0%BF%E7%97%85#%E7%B3%96%E5%B0%BF%E7%97%85%E7%9A%84%E7%9A%84%E8%AF%8A%E6%96%AD_v104713560_zh'},
-  hypoglycemiaMsd:{label:'MSD Manual: 低血糖',url:'https://www.msdmanuals.cn/professional/endocrine-and-metabolic-disorders/diabetes-mellitus-and-hypoglycemia/hypoglycemia?query=%E8%83%B0%E5%B2%9B%E7%B4%A0'},
-  cardiacOutputMsd:{label:'MSD Manual: 心输出量',url:'https://www.msdmanuals.cn/professional/cardiovascular-disorders/heart-failure/overview-of-heart-failure?query=%E5%BF%83%E8%BE%93%E5%87%BA%E9%87%8F#%E7%97%85%E7%90%86%E7%94%9F%E7%90%86_v103602065_zh'},
-  preloadAfterload:{label:'MSD Manual: 心力衰竭病理生理',url:'https://www.msdmanuals.cn/professional/cardiovascular-disorders/heart-failure/overview-of-heart-failure#%E7%97%85%E7%90%86%E7%94%9F%E7%90%86_v103602065_zh'},
-  contractility:{label:'MSD Manual: 心力衰竭病理生理',url:'https://www.msdmanuals.cn/professional/cardiovascular-disorders/heart-failure/overview-of-heart-failure#%E7%97%85%E7%90%86%E7%94%9F%E7%90%86_v103602065_zh'},
-  rhythmStability:{label:'MSD Manual: 心律失常概述',url:'https://www.msdmanuals.cn/professional/cardiovascular-disorders/overview-of-arrhythmias-and-conduction-disorders/overview-of-arrhythmias#%E8%AF%8A%E6%96%AD_v936696_zh'},
-  sns:{label:'Cleveland Clinic: Sympathetic nervous system',url:'https://my.clevelandclinic.org/health/body/23262-sympathetic-nervous-system-sns-fight-or-flight'},
-  autonomicMsd:{label:'MSD Manual: 自主神经系统',url:'https://www.msdmanuals.cn/professional/neurologic-disorders/autonomic-nervous-system/overview-of-the-autonomic-nervous-system#%E8%A7%A3%E5%89%96_v1032284_zh'},
-  abgMsd:{label:'MSD Manual: 动脉血气和脉搏血氧',url:'https://www.msdmanuals.cn/home/lung-and-airway-disorders/diagnosis-of-and-procedures-for-lung-disorders/arterial-blood-gas-abg-analysis-and-pulse-oximetry'},
-  hematocritCleveland:{label:'Cleveland Clinic: Hematocrit',url:'https://my.clevelandclinic.org/health/diagnostics/17683-hematocrit'},
-  hematocritMayo:{label:'Mayo Clinic: Hematocrit test',url:'https://www.mayoclinic.org/tests-procedures/hematocrit/about/pac-20384728'},
-  oxygenDeliveryMsd:{label:'MSD Manual: 机械通气与供氧',url:'https://www.msdmanuals.cn/professional/critical-care-medicine/respiratory-failure-and-mechanical-ventilation/overview-of-mechanical-ventilation?query=%E4%BE%9B%E6%B0%A7'},
-  carbonMonoxideMsd:{label:'MSD Manual: 一氧化碳中毒',url:'https://www.msdmanuals.cn/professional/injuries-poisoning/poisoning/carbon-monoxide-poisoning?query=%E4%BE%9B%E6%B0%A7'},
-  lactateMsd:{label:'MSD Manual: 丙酮酸代谢障碍',url:'https://www.msdmanuals.cn/professional/pediatrics/inherited-disorders-of-metabolism/pyruvate-metabolism-disorders?query=%E4%B9%B3%E9%85%B8#%E4%B8%99%E9%85%AE%E9%85%B8%E8%84%B1%E6%B0%A2%E9%85%B6%E7%BC%BA%E4%B9%8F_v88762373_zh'},
-  anemiaHctMsd:{label:'MSD Manual: 贫血评估',url:'https://www.msdmanuals.cn/professional/hematology-and-oncology/approach-to-the-patient-with-anemia/evaluation-of-anemia?query=%E8%A1%80%E7%BB%86%E8%83%9E%E6%AF%94%E5%AE%B9'},
-  polycythemiaMsd:{label:'MSD Manual: 真性红细胞增多症',url:'https://www.msdmanuals.cn/professional/hematology-and-oncology/myeloproliferative-disorders/polycythemia-vera?query=%E8%A1%80%E7%BB%86%E8%83%9E%E6%AF%94%E5%AE%B9'},
-  metabolicBenefits:{label:'MSD Manual: 运动概述',url:'https://www.msdmanuals.cn/professional/special-subjects/exercise/overview-of-exercise?query=%E8%BF%90%E5%8A%A8%20%E4%BB%A3%E8%B0%A2#%E9%9C%80%E6%B0%A7%E8%BF%90%E5%8A%A8_v82378785_zh'}
+  hr:cnRef('心律失常','disease','10986',mayoLink('Heart rate','healthy-lifestyle/fitness/expert-answers/heart-rate/faq-20057979')),
+  hrTachy:cnRef('窦性心动过速','disease','0001AA100000000ELZT7',mayoLink('Tachycardia','diseases-conditions/tachycardia/diagnosis-treatment/drc-20355133')),
+  hrBrady:cnRef('窦性心动过缓','disease','0001AA100000000ENLQS',mayoLink('Bradycardia','diseases-conditions/bradycardia/symptoms-causes/syc-20355474')),
+  bp:cnRef('高血压病','disease','0001AA100000000ELHKB',ccLink('Hypertension (high blood pressure)','diseases/4314-hypertension-high-blood-pressure')),
+  bpHigh:cnRef('高血压危象','disease','0001AA100000000EQG69',mayoLink('High blood pressure','diseases-conditions/high-blood-pressure/symptoms-causes/syc-20373410')),
+  bpLow:cnRef('休克（低血压与组织低灌注）','disease','10517',mayoLink('Low blood pressure','diseases-conditions/low-blood-pressure/symptoms-causes/syc-20355465')),
+  gfr:cnRef('慢性肾脏病（肾小球滤过率）','disease','11301',ccLink('Estimated glomerular filtration rate (eGFR)','diagnostics/21593-estimated-glomerular-filtration-rate-egfr')),
+  abg:cnRef('动脉血气分析','jc','0001AA1000000009312V',osmosisLink('Acid-base physiology','notes/Acid-Base_Physiology')),
+  spo2:cnRef('血氧饱和度测定','jy','0001AA100000000OKBSO',ccLink('Pulse oximetry','diagnostics/pulse-oximetry')),
+  metabolicAcidosis:cnRef('代谢性酸中毒','disease','10845',ccLink('Metabolic acidosis','diseases/24492-metabolic-acidosis')),
+  lacticAcidosis:cnRef('乳酸性酸中毒','disease','0001AA100000000ELZSA',ccLink('Lactic acidosis','diseases/25066-lactic-acidosis')),
+  acidBaseMsd:cnRef('酸碱平衡紊乱','disease','10844',merckLink('Acid-Base Regulation','nephrology/acid-base-regulation-and-disorders/acid-base-regulation')),
+  electrolytes:cnRef('水钠代谢紊乱与容量障碍','disease','10832',ccLink('Electrolytes','diagnostics/21790-electrolytes')),
+  sodium:cnRef('低钠血症','disease','10834',osmosisLink('Sodium homeostasis','learn/Sodium_homeostasis')),
+  sodiumWaterMsd:cnRef('水钠代谢紊乱-容量障碍：低容量','disease','10832',merckLink('Water and Sodium Balance','nephrology/fluid-metabolism/water-and-sodium-balance')),
+  potassium:cnRef('高钾血症','disease','10837',osmosisLink('Potassium homeostasis','learn/Potassium_homeostasis')),
+  potassiumHighMsd:cnRef('高钾血症','disease','10837',merckLink('Hyperkalemia','nephrology/electrolyte-disorders/hyperkalemia')),
+  potassiumLowMsd:cnRef('低钾血症','disease','22420',merckLink('Hypokalemia','nephrology/electrolyte-disorders/hypokalemia')),
+  aldosterone:cnRef('醛固酮测定','jy','0001AA100000000L5VR5',ccLink('Aldosterone','articles/24158-aldosterone')),
+  renin:cnRef('血浆肾素活性测定','jy','1565619455428395009',ccLink('Renin-angiotensin-aldosterone system (RAAS)','articles/24175-renin-angiotensin-aldosterone-system-raas')),
+  raasMsd:cnRef('原发性醛固酮增多症','disease','10899',osmosisLink('Renin-angiotensin-aldosterone system','learn/Renin-angiotensin-aldosterone_system')),
+  osmolality:cnRef('血浆、尿液渗透压测定','jy','0001AA100000000SIX8K',osmosisLink('Osmoregulation','learn/Osmoregulation')),
+  adhMsd:cnRef('抗利尿激素分泌不当综合征','disease','10893',merckLink('Syndrome of Inappropriate ADH Secretion (SIADH)','nephrology/electrolyte-disorders/syndrome-of-inappropriate-adh-secretion-siadh')),
+  bloodVolumeMsd:cnRef('失血性休克','disease','22460',merckLink('Shock','critical-care-medicine/shock-and-fluid-resuscitation/shock')),
+  gfrMsd:cnRef('慢性肾脏病','disease','11301',merckLink('Chronic Kidney Disease','nephrology/chronic-kidney-disease/chronic-kidney-disease')),
+  urinePolyuriaMsd:cnRef('少尿、无尿与多尿','symptom','5d819167c8580f5ef7720fa9bc71192c',ccLink('Central diabetes insipidus','diseases/23515-central-diabetes-insipidus-cdi')),
+  urineOliguriaMsd:cnRef('少尿与无尿','symptom','a5cca1dee1cf7ef7fedbd8723f45f6aa',merckLink('Oliguria','critical-care-medicine/approach-to-the-critically-ill-patient/oliguria')),
+  ventilationMechanicsMsd:cnRef('机械通气术','lccz','1670681359921709057',merckLink('Overview of Mechanical Ventilation','critical-care-medicine/respiratory-failure-and-mechanical-ventilation/overview-of-mechanical-ventilation')),
+  hyperventilationMsd:cnRef('过度通气综合征','disease','0001AA100000000ES74V',merckLink('Hyperventilation Syndrome','pulmonary-disorders/symptoms-of-pulmonary-disorders/hyperventilation-syndrome')),
+  dyspneaMsd:cnRef('呼吸困难','symptom','390646654afa8daec85de4bfcd5ce57a',merckLink('Dyspnea','pulmonary-disorders/symptoms-of-pulmonary-disorders/dyspnea')),
+  glucose:cnRef('血糖测定','jy','1573146820949835778',ccLink('Blood glucose test','diagnostics/12363-blood-glucose-test')),
+  diabetes:cnRef('糖尿病','disease','10850',merckLink('Overview of Diabetes Mellitus','endocrine-and-metabolic-disorders/diabetes-mellitus-and-hypoglycemia/overview-of-diabetes-mellitus')),
+  diabetesMsd:cnRef('糖尿病','disease','10850',merckLink('Overview of Diabetes Mellitus','endocrine-and-metabolic-disorders/diabetes-mellitus-and-hypoglycemia/overview-of-diabetes-mellitus')),
+  hypoglycemiaMsd:cnRef('低血糖症','disease','10855',ccLink('Hypoglycemia (low blood sugar)','diseases/11647-hypoglycemia-low-blood-sugar')),
+  cardiacOutputMsd:cnRef('心力衰竭','disease','25941',merckLink('Overview of Heart Failure','cardiovascular-disorders/heart-failure/overview-of-heart-failure')),
+  preloadAfterload:cnRef('心力衰竭（前负荷与后负荷）','disease','25941',merckLink('Heart Failure: Pathophysiology','cardiovascular-disorders/heart-failure/overview-of-heart-failure')),
+  contractility:cnRef('急性左心衰竭（收缩力下降）','disease','0001AA100000000EM549',merckLink('Overview of Heart Failure','cardiovascular-disorders/heart-failure/overview-of-heart-failure')),
+  rhythmStability:cnRef('心律失常','disease','10986',merckLink('Overview of Arrhythmias','cardiovascular-disorders/overview-of-arrhythmias-and-conduction-disorders/overview-of-arrhythmias')),
+  sns:cnRef('血浆儿茶酚胺测定（交感-肾上腺髓质活性）','jy','0001AA100000000L5VVE',ccLink('Sympathetic nervous system','body/23262-sympathetic-nervous-system-sns-fight-or-flight')),
+  autonomicMsd:cnRef('血浆儿茶酚胺测定','jy','0001AA100000000L5VVE',merckLink('Overview of the Autonomic Nervous System','neurologic-disorders/autonomic-nervous-system/overview-of-the-autonomic-nervous-system')),
+  abgMsd:cnRef('动脉血气分析','jc','0001AA1000000009312V',merckLink('Acid-Base Regulation','nephrology/acid-base-regulation-and-disorders/acid-base-regulation')),
+  hematocritCleveland:cnRef('血细胞比容测定','jy','0001AA100000000L5Y2K',ccLink('Hematocrit','diagnostics/17683-hematocrit')),
+  hematocritMayo:cnRef('贫血','disease','11403',mayoLink('Hematocrit test','tests-procedures/hematocrit/about/pac-20384728')),
+  oxygenDeliveryMsd:cnRef('高流量给氧','lccz','1889856919040950274',osmosisLink('Oxygen binding capacity and oxygen content','learn/Oxygen_binding_capacity_and_oxygen_content')),
+  carbonMonoxideMsd:cnRef('一氧化碳中毒','disease','10732',merckLink('Carbon Monoxide Poisoning','injuries-poisoning/poisoning/carbon-monoxide-poisoning')),
+  lactateMsd:cnRef('血浆乳酸测定','jy','0001AA100000000L5WO8',ccLink('Lactic acidosis','diseases/25066-lactic-acidosis')),
+  anemiaHctMsd:cnRef('贫血','disease','11403',merckLink('Evaluation of Anemia','hematology-and-oncology/approach-to-the-patient-with-anemia/evaluation-of-anemia')),
+  polycythemiaMsd:cnRef('真性红细胞增多症','disease','11474',merckLink('Polycythemia Vera','hematology-and-oncology/myeloproliferative-disorders/polycythemia-vera')),
+  // PMPH has no standalone exercise-physiology entry; MSD covers it in both editions.
+  metabolicBenefits:{zh:{label:'MSD Manual 中文版：运动概述',url:'https://www.msdmanuals.cn/professional/special-subjects/exercise/overview-of-exercise'},en:merckLink('Overview of Exercise','special-subjects/exercise/overview-of-exercise')}
 };
 
 // The per-disease reference badge. The link itself comes from the backend
@@ -4912,7 +4926,10 @@ function jumpMobileSection(){
   document.querySelector('.left-panel')?.scrollIntoView({behavior:'smooth', block:'start'});
 }
 function paramReferenceLinks(info){
-  const refs=(info?.refs || []).map(k=>TRUSTED_PARAM_LINKS[k]).filter(Boolean);
+  // Each entry now carries both editions, so a Chinese card cites 人卫临床助手 and an English
+  // card cites the English publisher instead of both languages sharing one mixed list.
+  const edition=lang==='en'?'en':'zh';
+  const refs=(info?.refs || []).map(k=>TRUSTED_PARAM_LINKS[k]?.[edition]).filter(Boolean);
   if(!refs.length) return '';
   const label=lang==='zh' ? '参考链接' : 'Useful links';
   const links=refs.map(ref=>`<a href="${ref.url}" target="_blank" rel="noopener noreferrer">${ref.label}</a>`).join('');

@@ -85,6 +85,25 @@ async function run(){
   const zhChineseFlags=zhEvidence.reference_library.map(item=>/msdmanuals\.cn|\/zh-hans\/|pmphai\.com/.test(item.url));
   assert.deepEqual(zhChineseFlags,zhChineseFlags.slice().sort((a,b)=>Number(b)-Number(a)));
 
+  // 2026-09-06 reference rebuild. A Chinese report's parameter links must be Chinese-language
+  // ones from 人卫临床助手, not the English lab-test pages it used to inherit; and MedlinePlus,
+  // whose nine entries made a Chinese reading list English, must be gone from both editions.
+  const zhParameterRefs=zhEvidence.reference_library.filter(item=>item.kind==='parameter');
+  assert.ok(zhParameterRefs.length>0,'a Chinese report should carry parameter references');
+  assert.ok(zhParameterRefs.every(item=>item.url.startsWith('https://test.pmphai.com/jeesitede/')));
+  assert.ok(zhParameterRefs.every(item=>item.title.startsWith('人卫临床助手：')));
+  assert.ok([...evidence.reference_library,...zhEvidence.reference_library]
+    .every(item=>!/medlineplus\.gov/.test(item.url)));
+  // Every English publisher in the rebuilt table, and nothing else.
+  assert.ok(evidence.reference_library.every(item=>/^https:\/\/(www\.merckmanuals\.com|my\.clevelandclinic\.org|www\.mayoclinic\.org|www\.osmosis\.org)\//.test(item.url)));
+  // The two Cleveland slugs that 404ed in production must not come back.
+  assert.ok([...evidence.reference_library,...zhEvidence.reference_library]
+    .every(item=>!/21624-glomerular-filtration-rate-gfr|17824-pulse-oximetry/.test(item.url)));
+  // MSD moved electrolytes, acid-base and fluid metabolism into nephrology/; the old
+  // endocrine-and-metabolic-disorders paths 404 and must never be emitted again.
+  assert.ok([...evidence.reference_library,...zhEvidence.reference_library]
+    .every(item=>!/endocrine-and-metabolic-disorders\/(electrolyte-disorders|acid-base-regulation-and-disorders|fluid-metabolism)\//.test(item.url)));
+
   // A scenario without a curated entry must not fabricate one; only parameter links remain.
   const randomEvidence=buildMedicalEvidence({
     ...report,
@@ -146,9 +165,49 @@ async function run(){
   assert.match(SYSTEM_PROMPT,/a compression setting is never a clinical intervention/);
   assert.match(buildUserPrompt(cycleEvidence),/vicious_cycles 非空时，第 5 部分/);
   assert.match(buildUserPrompt(cycleEvidence),/第 2 部分除了重建操作策略/);
-  // Budget moved between sections; the total did not, because 7500 output tokens did not.
-  assert.match(SYSTEM_PROMPT,/s2 420, s3 260, s4 380, s5 660, s6 860/);
-  assert.match(SYSTEM_PROMPT,/total of about 4300 characters/);
+  // Budget moved between sections again on 2026-09-06: section 10 grew from five questions to
+  // 3+3, paid for out of sections 3, 5 and 6 so the total barely moved.
+  assert.match(SYSTEM_PROMPT,/s2 420, s3 240, s4 380, s5 620, s6 820/);
+  assert.match(SYSTEM_PROMPT,/s10 460/);
+  assert.match(SYSTEM_PROMPT,/total of about 4380 characters/);
+
+  // Section 3 admission test. The four gates exist because a session of random micro-nudges
+  // used to be credited for "not pushing anything into the danger range" and for leaving
+  // automatic scaling on - an absence and a default, neither of them the learner's doing.
+  assert.match(SYSTEM_PROMPT,/WHAT COUNTS AS SOMETHING DONE WELL/);
+  assert.match(SYSTEM_PROMPT,/ACT, NOT ABSENCE/);
+  assert.match(SYSTEM_PROMPT,/CHOICE, NOT DEFAULT/);
+  assert.match(SYSTEM_PROMPT,/PHYSIOLOGICALLY MATERIAL/);
+  assert.match(SYSTEM_PROMPT,/VISIBLE IN THE EVIDENCE/);
+  assert.match(SYSTEM_PROMPT,/at least 10% of the width of that parameter's warning_range/);
+  assert.match(SYSTEM_PROMPT,/Never balance section 3 against section 4/);
+  assert.match(SYSTEM_PROMPT,/Free exploration does not lower this bar/);
+  assert.match(buildUserPrompt(zhEvidence),/第 3 部分准入检验/);
+  assert.match(buildUserPrompt(zhEvidence),/warning_range 宽度的 10%/);
+  assert.match(buildUserPrompt(zhEvidence),/本次会话没有可由证据确认的正确操作/);
+  assert.match(buildUserPrompt(evidence),/Section 3 admission test/);
+  assert.match(buildUserPrompt(evidence),/10% of that parameter's warning_range width/);
+
+  // Section 10 is now 3 mechanism questions plus 3 clinical ones, asked as two separate sets.
+  assert.match(SYSTEM_PROMPT,/SECTION 10 IS TWO SEPARATE QUESTION SETS, NOT ONE LIST/);
+  assert.match(SYSTEM_PROMPT,/exactly three physiology and pathophysiology mechanism questions/);
+  assert.match(SYSTEM_PROMPT,/exactly three clinical questions/);
+  assert.match(SYSTEM_PROMPT,/Clinical question n must build on mechanism question n/);
+  assert.match(SYSTEM_PROMPT,/never ask for a drug, a dose, or a treatment plan/);
+  assert.doesNotMatch(SYSTEM_PROMPT,/exactly five questions/);
+  assert.match(buildUserPrompt(zhEvidence),/## 10\. 反思问题/);
+  assert.match(buildUserPrompt(zhEvidence),/### 10\.1 生理机制问题（由易到难）/);
+  assert.match(buildUserPrompt(zhEvidence),/### 10\.2 相关临床问题（由易到难）/);
+  assert.doesNotMatch(buildUserPrompt(zhEvidence),/## 10\. 五个反思问题/);
+  assert.match(buildUserPrompt(evidence),/## 10\. Reflection questions/);
+  assert.match(buildUserPrompt(evidence),/### 10\.1 Physiology mechanism questions \(easy to hard\)/);
+  assert.match(buildUserPrompt(evidence),/### 10\.2 Related clinical questions \(easy to hard\)/);
+  assert.doesNotMatch(buildUserPrompt(evidence),/## 10\. Five reflection questions/);
+
+  // The Chinese reference base is now 人卫临床助手, which paywalls the applied-clinical sections.
+  assert.match(SYSTEM_PROMPT,/人卫临床助手/);
+  assert.match(SYSTEM_PROMPT,/never as a source of diagnostic criteria, drug choices or treatment plans/);
+  assert.match(SYSTEM_PROMPT,/MSD Manual Professional, Cleveland Clinic, Mayo Clinic and Osmosis/);
 
   let requestBody=null;
   const fetchImpl=async(_url,options)=>{

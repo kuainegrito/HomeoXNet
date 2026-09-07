@@ -102,6 +102,24 @@ yes; with the flag off, `POST /api/learning-event` and `POST /api/ai-prompt-log`
 
 `GET /api/health` reports the current state as `learningLogEnabled`.
 
+### Optional: on-campus intranet redirect
+
+If you also run an on-premise mirror on a campus intranet, the public server can send on-campus
+visitors there instead. **Off by default** — a plain clone never redirects anyone.
+
+```bash
+export CAMPUS_REDIRECT_ENABLED=1
+export CAMPUS_INTRANET_HOST=10.9.53.252
+export CAMPUS_IP_CIDRS=128.164.0.0/16
+export CAMPUS_HEARTBEAT_SECRET=some-shared-secret
+```
+
+A redirect only happens when **both** hold: the visitor's IP falls inside `CAMPUS_IP_CIDRS`, and the
+intranet box has POSTed to `POST /api/campus/heartbeat` (with header `X-Campus-Heartbeat-Secret`)
+within the last `CAMPUS_HEARTBEAT_TIMEOUT_MS` (default 60s). If the intranet box goes down, its
+heartbeat goes stale and redirects stop on their own — a wrong guess here means "stay on the public
+site", never "redirect to something unreachable". `GET /api/campus/status` reports the current state.
+
 ### Optional: AI case analysis
 
 The simulator can send a finished session to a language model and get back a structured case

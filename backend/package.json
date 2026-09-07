@@ -15,7 +15,8 @@
     "test:temporal": "node temporalRegression.js",
     "test:learning-modes": "node learningModeRegression.js",
     "test:telemetry-gate": "node telemetryGateRegression.js",
-    "test": "npm run test:scenarios && npm run test:temporal && npm run test:learning-modes && npm run test:model-transparency && npm run test:layout && npm run test:reports && npm run test:telemetry-gate"
+    "test:campus-redirect": "node campusRedirectRegression.js",
+    "test": "npm run test:scenarios && npm run test:temporal && npm run test:learning-modes && npm run test:model-transparency && npm run test:layout && npm run test:reports && npm run test:telemetry-gate && npm run test:campus-redirect"
   },
   "dependencies": {
     "express": "^4.19.2",

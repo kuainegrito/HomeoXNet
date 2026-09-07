@@ -18,6 +18,7 @@ const {callMedicalAnalysis, isConfigured:isMedicalAiConfigured, buildMedicalEvid
 if(medicalAiProvider === 'kimi') console.log('Homeostasis AI provider: Moonshot Kimi (medicalAiKimi)');
 const {AiQuotaStore} = require('./aiQuota');
 const {evaluateAiEligibility, isEnabled:isAiEligibilityEnforced, publicConfig:aiEligibilityConfig, thresholdsFromEnv:aiEligibilityThresholds} = require('./aiEligibility');
+const campusRedirect = require('./campusRedirect');
 
 const app = express();
 const PORT = process.env.PORT || 3002;
@@ -51,6 +52,9 @@ app.use((req,res,next)=>{
   if(req.method === 'OPTIONS') return res.sendStatus(204);
   next();
 });
+// See campusRedirect.js: off by default, sends on-campus GET traffic to the intranet mirror
+// only while it is both in a configured GMU IP range and confirmed alive by heartbeat.
+app.use(campusRedirect.redirectMiddleware);
 
 function positiveIntEnv(name, fallback){
   const value = Number(process.env[name]);
@@ -316,6 +320,11 @@ app.get('/api/health', (req,res)=>res.json({ok:true, service:'homeostasis-simula
 // from /api/health so the health probe stays an ops concern and this stays a privacy one.
 app.get('/api/client-config', (req,res)=>res.json({learningLogEnabled:LEARNING_LOG_ENABLED}));
 app.get('/api/meta', (req,res)=>res.json(meta(req.query.lang || 'zh')));
+
+// The intranet mirror POSTs here on a short interval to prove it is reachable from the public
+// internet; campusRedirect.redirectMiddleware refuses to redirect anyone once this goes stale.
+app.post('/api/campus/heartbeat', campusRedirect.heartbeatHandler);
+app.get('/api/campus/status', campusRedirect.statusHandler);
 
 app.post('/api/reports', reportCreateLimiter, express.text({type:'text/html',limit:REPORT_MAX_BYTES}), (req,res)=>{
   const html=typeof req.body==='string'?req.body:'';

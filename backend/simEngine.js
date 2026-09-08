@@ -246,7 +246,21 @@ const SCENARIOS = {
   // lethal. Modelling the stimulus where it belongs, on the drive rather than only on the
   // minute volume, restores that: this patient cannot blow off the problem, and giving base to
   // an already alkalaemic one still kills them.
-  salicylateToxicity:{category:'respiratory',zh:'水杨酸中毒混合性酸碱失衡',en:'Salicylate toxicity with mixed acid–base disturbance',initial:{paCO2:-.50,bicarbonate:-.70},drivers:{ventilation:1.20,chemo:.28,bicarbonate:-1.10,lactate:.80,metDemand:.40},note:{zh:'呼吸中枢兴奋造成呼吸性碱中毒，同时酸生成与碳酸氢盐丢失形成代谢性酸中毒。',en:'Respiratory-center stimulation causes respiratory alkalosis while acid generation and bicarbonate loss produce metabolic acidosis.'}},
+  // Recalibrated 2026-09-07 alongside the bicarbonate seeding fix. This scenario carried three
+  // acid channels - a stated HCO3- deficit, a bicarbonate flux, and a lactate driver - and only
+  // the lactate one ever worked, because seedBicarbonatePools put the stated deficit in the
+  // five-second pool where it evaporated within a minute. The lactate driver had therefore been
+  // tuned upward until it carried the whole metabolic limb alone (lactate 5.3 mmol/L, a shock
+  // number rather than a salicylate one), and the stated deficit ran backwards: HCO3- started at
+  // 18.4 and ROSE to 22. Once the deficit persisted the two channels stacked and an untreated
+  // patient died in 15 minutes instead of the six hours this scenario exists to teach.
+  //
+  // The presenting deficit is now mild and the acidosis DEEPENS - HCO3- 22.0 at the door,
+  // 17.4 by six hours - which is the two-stage disorder salicylate actually is: respiratory
+  // alkalosis first, metabolic acidosis behind it. Settled gas pH 7.48 / PaCO2 21 / HCO3- 17.4
+  // / lactate 3.9 is a textbook adult salicylate gas, the patient stays "stable but wrong" for
+  // six hours, and loading base into an already alkalaemic patient still kills them.
+  salicylateToxicity:{category:'respiratory',zh:'水杨酸中毒混合性酸碱失衡',en:'Salicylate toxicity with mixed acid–base disturbance',initial:{paCO2:-.50,bicarbonate:-.25},drivers:{ventilation:1.20,chemo:.28,bicarbonate:-1.10,lactate:.45,metDemand:.40},note:{zh:'呼吸中枢兴奋造成呼吸性碱中毒，同时酸生成与碳酸氢盐丢失形成代谢性酸中毒。',en:'Respiratory-center stimulation causes respiratory alkalosis while acid generation and bicarbonate loss produce metabolic acidosis.'}},
   dehydration:{category:'renal',zh:'高渗性脱水',en:'Hyperosmotic dehydration',initial:{bloodVolume:-1.20,sodium:1.10,osm:1.32},drivers:{bloodVolume:-1.40,sodium:.80},note:{zh:'既存的水分丢失造成容量不足与高钠高渗，并继续缓慢失水。',en:'Established water loss causes volume depletion and hypernatremic hyperosmolality with continued slower loss.'}},
   siadh:{category:'renal',zh:'SIADH样低钠血症',en:'SIADH-like hyponatremia',initial:{sodium:-1.20,osm:-1.44},drivers:{adh:1.80,sodium:-1.0},note:{zh:'持续 ADH 作用引起保水、低渗和稀释性低钠。',en:'Persistent ADH activity causes water retention, hypotonicity, and dilutional hyponatremia.'}},
   renalFailure:{category:'renal',zh:'急性肾功能衰竭伴高钾',en:'Acute renal failure with hyperkalemia',initial:{potassium:.60},drivers:{gfr:-1.40,potassium:.35},note:{zh:'原发滤过功能下降使尿量和排钾能力降低，继发容量与电解质变化。',en:'Primary filtration failure reduces urine and potassium clearance, causing secondary volume and electrolyte changes.'}},
@@ -399,7 +413,7 @@ function createSession(lang='zh'){
     noThreat: false,
     acuteBurden: 0, chronicBurden: 0,
     peakTracker: {}, events: [],
-    logLines: [], activeConditions: [], conditionMemory: {}, domainExposure:{}, scenario:null
+    logLines: [], activeConditions: [], conditionMemory: {}, conditionLevel: {}, domainExposure:{}, scenario:null
   };
   defs.forEach(d => { session.state[d.key]=0; session.controls[d.key]=0; session.prevZones[d.key]='normal'; session.controlTouching[d.key]=false; session.controlHoldUntil[d.key]=0; });
   HIDDEN_KEYS.forEach(k => { session.state[k]=0; });
@@ -687,7 +701,17 @@ function computeTargetVector(session){
 
   t.insulin = 0.82*z.glucose - 0.18*z.symp;
   t.glucagon = -0.58*z.glucose + 0.34*z.symp + 0.25*z.metDemand;
-  t.glucose = 0.66*z.glucagon + 0.28*z.symp + 0.22*z.metDemand - 0.88*z.insulin;
+  // Renal glucose clearance. Above the tubular reabsorption threshold the kidney spills glucose,
+  // and the spill follows the filtered load - GFR times plasma concentration - so it fades as
+  // filtration fails. This is the limb the osmotic-diuresis vicious cycle is named after, and
+  // until 2026-09-07 it did not exist: the loop's own chain text read "GFR falls -> less glucose
+  // excreted -> glucose rises" while the equations had no GFR term on glucose at all, so a
+  // hyperosmolar patient whose GFR fell from 125 to 0 mL/min had their glucose FALL from 32.4 to
+  // 17.9 mmol/L for the whole seven days the loop was being reported at severity 1.0-1.5.
+  // With the limb in place the loop closes: the kidney lowers the glucose while it still can,
+  // and hands it back once it cannot.
+  const glycosuria = clip(z.glucose - RENAL_GLUCOSE_THRESHOLD, 0, 4) * clip((z.gfr + 1.8)/1.8, 0, 1.6);
+  t.glucose = 0.66*z.glucagon + 0.28*z.symp + 0.22*z.metDemand - 0.88*z.insulin - GLYCOSURIA_GAIN*glycosuria;
   // What reaches tissue is oxygen CONTENT, and content follows the dissociation curve, not the
   // tension. Below baseline the curve is steep and PaO2 tracks content closely, which is what
   // the linear term does and what every hypoxia scenario in this file is calibrated against.
@@ -837,6 +861,16 @@ const HCO3_CONTROL_GAIN = 0.85; // infused HCO3- is partly re-exhaled as CO2, so
 // One lactate state unit (4.2 mmol/L) consumes ~0.52 bicarbonate state units (4.2 mmol/L): 1:1.
 const HCO3_PER_LACTATE = 0.52;
 
+// Renal glucose threshold, in glucose state units: 10 mmol/L is (10 - 5.0)/4.72 = 1.06. Below
+// it the tubule reabsorbs everything filtered and the kidney is not a route of glucose loss at
+// all, which is why this term cannot touch a normoglycaemic network.
+const RENAL_GLUCOSE_THRESHOLD = 1.06;
+// How hard the spill pulls, per state unit of glucose above threshold at a normal GFR. Set so a
+// preserved kidney takes a hyperosmolar patient from 32 mmol/L down toward the high teens over
+// the first half hour - the clearance the osmotic diuresis is actually doing - without being
+// able to normalise a glucose on its own, which no kidney can.
+const GLYCOSURIA_GAIN = 0.22;
+
 // The visible bicarbonate node is the sum of its pools, clamped, with any clamping charged
 // to the fast pool so the slow renal store is never silently rewritten.
 function reconcileBicarbonate(session){
@@ -846,12 +880,30 @@ function reconcileBicarbonate(session){
   if(bounded!==total) session.state.hco3Buffer += bounded - total;
   session.state.bicarbonate=bounded;
 }
-// Seeds the two pools from a scenario's starting bicarbonate: a deficit is buffer already spent
-// by acid, a surplus is renal retention that took days to build before the session opened.
+// Seeds the two pools from a scenario's starting bicarbonate.
+//
+// The split used to be made on the SIGN of the offset - surplus to the renal pool, deficit to
+// the buffer pool - and that quietly deleted every metabolic acidosis in the scenario library.
+// The fast pool's target is set by the acids actually in front of it (lactate) and by PaCO2;
+// a ketoacid or salicylate deficit is neither, so the target read ~0 and a five-second time
+// constant erased the deficit before the learner could see it. Measured on 2026-09-07: an
+// untreated DKA went from HCO3- 16.8 / pH 7.24 to 23.9 / 7.40 in sixty simulated seconds.
+//
+// Split on MECHANISM instead. Whatever the fast pool's own target can account for right now is
+// chemical buffering and belongs there; the remainder has no fast explanation, which is exactly
+// what "established" means - it took days to arrive and it will take days to leave. A scenario
+// that states no bicarbonate offset at all is left with both pools empty, so an acute
+// respiratory acidosis still generates its own acute buffering (~1 mmol/L per 10 mmHg) from
+// zero rather than being handed a slow pool it never earned.
 function seedBicarbonatePools(session){
   const z0=session.state.bicarbonate;
-  session.state.hco3Renal = z0 > 0 ? z0 : 0;
-  session.state.hco3Buffer = z0 > 0 ? 0 : z0;
+  if(!z0){ session.state.hco3Buffer=0; session.state.hco3Renal=0; return; }
+  const fast=clip(computeTargetVector(session).t.hco3Buffer, -3.2, 3.2);
+  // The fast share can never exceed the stated offset nor point the other way: the scenario
+  // author's number is the total, and this only decides which clock carries it.
+  const share=z0 > 0 ? clip(fast, 0, z0) : clip(fast, z0, 0);
+  session.state.hco3Buffer=share;
+  session.state.hco3Renal=z0-share;
 }
 // Seeds the hidden slow pools so a scenario that starts mid-illness starts consistently. A
 // patient handed to you with K+ 6.0 has been retaining potassium for days; starting kBody at
@@ -892,10 +944,24 @@ function assessConditions(session){
   const zh = session.lang !== 'en';
   const add=(id,nameZh,nameEn,severity,help,harm,whyZh,whyEn,goodZh,goodEn,badZh,badEn)=>{
     if(severity<=0.35) return;
-    const delta = help - harm;
+    // `stage` answers "is the patient getting worse?" - a question about the patient. It used
+    // to answer "is your slider helping?", because it was computed from help-harm, and both of
+    // those are built purely from session.controls. In a run with no interventions at all -
+    // which is exactly what a long observation of a compensation turning into a decompensation
+    // is - help and harm are both zero, so the word could only ever read "persistent imbalance"
+    // even while potassium climbed from 5.9 to 10.0 mmol/L and rhythm stability fell from 94
+    // to 5 (observed 2026-09-07 across all fifteen frames of a five-scenario capture).
+    // The trend now comes from the condition's own severity, sampled at least
+    // CONDITION_TREND_WINDOW simulated seconds apart so the answer does not depend on which
+    // lens the learner is watching through. The intervention verdict has not been lost: help
+    // and harm are still published on every condition and the panel already renders both.
+    const memo=session.conditionLevel?.[id];
     let stage = zh ? '持续失衡' : 'Persistent imbalance';
-    if(delta>0.28) stage = zh ? '改善中' : 'Improving';
-    if(delta<-0.28) stage = zh ? '恶化中' : 'Worsening';
+    if(memo){
+      const rel=(memo.rate*60)/Math.max(clip(severity,0,4), 0.5);   // fraction of itself per simulated minute
+      if(rel > CONDITION_TREND_BAND) stage = zh ? '恶化中' : 'Worsening';
+      else if(rel < -CONDITION_TREND_BAND) stage = zh ? '改善中' : 'Improving';
+    }
     conds.push({id, name: zh ? nameZh : nameEn, severity:clip(severity,0,4), help:clip(help,0,3), harm:clip(harm,0,3), why:zh?whyZh:whyEn, good:zh?goodZh:goodEn, bad:zh?badZh:badEn, stage});
   };
   const shock = clip((65-A('map'))/18,0,2) + 0.8*clip((4.6-A('bloodVolume'))/1.1,0,2) + 0.7*clip((4.0-A('co'))/1.4,0,2);
@@ -1031,7 +1097,14 @@ function assessConditions(session){
     '有利：谨慎↑Na⁺，减少 ADH/水潴留，增加自由水排出并纠正低渗。', 'Helpful: cautiously raise Na⁺, reduce ADH and water retention, increase free-water excretion, and correct hypotonicity.',
     '错误：继续↓Na⁺、↑ADH 或保水，会加重细胞水肿风险。', 'Harmful: further lowering Na⁺, raising ADH, or retaining water worsens cellular swelling risk.');
 
-  const hypoG = clip((3.9-A('glucose'))/1.0,0,2) + 0.35*clip((92-A('tissueO2'))/25,0,2);
+  // Poor delivery AGGRAVATES a hypoglycaemia; it does not create one. Written as a free addend,
+  // the oxygen term alone cleared the 0.35 display threshold and lit "hypoglycaemia risk" on a
+  // patient whose glucose was 5.1 mmol/L - observed across all seven simulated days of the
+  // lactic-acidosis scenario on 2026-09-07, carrying advice about insulin the patient never had.
+  // Gating it behind a real glucose deficit keeps the original severity whenever the condition
+  // is genuine and silences it when it is not.
+  const glucoseDeficit = clip((3.9-A('glucose'))/1.0,0,2);
+  const hypoG = glucoseDeficit > 0 ? glucoseDeficit + 0.35*clip((92-A('tissueO2'))/25,0,2) : 0;
   add('hypogly','低血糖风险','Hypoglycemia risk', hypoG,
     0.95*posCtl(session,'glucose') + 0.80*negCtl(session,'insulin') + 0.55*posCtl(session,'glucagon'),
     0.95*posCtl(session,'insulin') + 0.75*negCtl(session,'glucose') + 0.40*posCtl(session,'metDemand'),
@@ -1325,8 +1398,54 @@ function aggregateHazard(domains){
 // the integration, so it runs once per frame instead of once per macro step. At the days lens
 // a frame can contain a hundred steps, and rebuilding eighteen condition objects inside each
 // of them was the single largest cost in the solver.
+// The trend reference is a lagging average of the condition's own severity, not a sample taken
+// a fixed number of ticks ago: a tick is a sixth of a second on the seconds lens and several
+// hours on the days lens, so anything counted in ticks would report a different trend for the
+// same physiology depending on how the learner was watching. The average decays on SIMULATED
+// time, so the answer is the same at every compression.
+//
+// The trend is a smoothed RELATIVE RATE - what fraction of its current size this condition
+// gains or loses per simulated minute - and not a comparison against some earlier sample.
+// Two earlier attempts failed on the same rock. Comparing the current severity against a
+// lagging average answers "is this above where it has been", so a scenario that opens on a
+// spike (haemorrhage seeds MAP at -0.90) and partly reflexes back reads "improving" for minutes
+// while it is in fact climbing again. Crossing a fast average over a slow one answers "which
+// way is it moving", but both are seeded at the value the condition had when it first crossed
+// the display threshold, so a condition that spikes and then recovers still reads "worsening"
+// for several minutes after its peak. A rate has neither problem, and dividing by the current
+// severity makes one threshold serve a hyperkalaemia that takes hours and a shock that takes
+// ninety seconds.
+const CONDITION_TREND_WINDOW = 180;   // simulated seconds of smoothing on the rate
+// Fraction of its own severity per simulated minute that counts as a direction. At 0.8%/min a
+// condition changes by about a tenth of itself in ten minutes, which is the slowest movement
+// worth putting a word on.
+const CONDITION_TREND_BAND = 0.008;
+function rememberConditionLevels(session){
+  if(!session.conditionLevel) session.conditionLevel={};
+  const t=session.simTime;
+  // A scenario is applied as a step, and for the first few seconds the fast reflexes are still
+  // catching up with it. That opening transient is an artefact of how the patient was handed
+  // over, not something the patient is doing, so the trend clock starts once it has settled.
+  const settled=t >= (session.scenario?.startedAt || 0) + SCENARIO_SETTLE_SECONDS;
+  const live=new Set();
+  session.activeConditions.forEach(c=>{
+    live.add(c.id);
+    const memo=session.conditionLevel[c.id];
+    if(!memo || !settled){ session.conditionLevel[c.id]={last:c.severity, rate:0, t}; return; }
+    const dt=t-memo.t;
+    if(dt<=0) return;
+    const inst=(c.severity-memo.last)/dt;
+    memo.rate += (1-Math.exp(-dt/CONDITION_TREND_WINDOW))*(inst-memo.rate);
+    memo.last=c.severity;
+    memo.t=t;
+  });
+  // A condition that has resolved forgets its history, so a later recurrence is read as a fresh
+  // event rather than compared against where it stood before it went away.
+  Object.keys(session.conditionLevel).forEach(id=>{ if(!live.has(id)) delete session.conditionLevel[id]; });
+}
 function refreshConditions(session){
   session.activeConditions=assessConditions(session);
+  rememberConditionLevels(session);
   announceConditionTrends(session);
   return session.activeConditions;
 }
@@ -1745,6 +1864,7 @@ function checkpoint(session){
     domainExposure:{...session.domainExposure},
     prevZones:{...session.prevZones},
     conditionMemory:{...session.conditionMemory},
+    conditionLevel:Object.fromEntries(Object.entries(session.conditionLevel||{}).map(([k,v])=>[k,{...v}])),
     peakTracker:Object.fromEntries(Object.entries(session.peakTracker||{}).map(([k,v])=>[k,{...v}])),
     logLines:[...(session.logLines||[])],
     eventCount:(session.events||[]).length,
@@ -1761,6 +1881,7 @@ function restoreCheckpoint(session, cp){
     dead:cp.dead, paused:cp.paused, chronic:cp.chronic, brakeRequested:cp.brakeRequested,
     state:{...cp.state}, domainExposure:{...cp.domainExposure}, prevZones:{...cp.prevZones},
     conditionMemory:{...cp.conditionMemory},
+    conditionLevel:Object.fromEntries(Object.entries(cp.conditionLevel||{}).map(([k,v])=>[k,{...v}])),
     peakTracker:Object.fromEntries(Object.entries(cp.peakTracker).map(([k,v])=>[k,{...v}])),
     logLines:[...cp.logLines]
   });
